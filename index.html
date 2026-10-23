@@ -834,7 +834,7 @@ textarea { min-height: 150px; resize: vertical; }
   function grapheBarres(points, opts) {
     // points: [{valeur, etiquette, sous, record}]
     const n = points.length, pas = 74, gauche = 18, haut = 46, hauteur = 230, bas = 58;
-    const L = Math.max(560, gauche * 2 + n * pas), H = haut + hauteur + bas;
+    const L = Math.max(240, gauche * 2 + n * pas), H = haut + hauteur + bas;
     const max = Math.max(opts.max || 1, ...points.map(p => p.valeur));
     const y = v => haut + hauteur - (v / max) * hauteur;
     const lignes = [0.25, 0.5, 0.75, 1].map(f => `<line x1="${gauche}" x2="${L - gauche}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="#d8f3ee" stroke-width="2" stroke-dasharray="6 6"/>`).join("");
