@@ -349,6 +349,40 @@ textarea { min-height: 150px; resize: vertical; }
     })(debut);
   }
 
+  // ---------- feu d'artifice (quand l'enfant bat son score) ----------
+  function feuArtifice() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const ctx = toile.getContext("2d"), dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+    toile.width = W * dpr; toile.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const fusees = [], etincelles = [], debut = performance.now(), DUREE = 4200;
+    const tirs = Array.from({ length: 7 }, (_, i) => ({ t: i * 450 + Math.random() * 200, x: W * (.15 + Math.random() * .7), y: H * (.12 + Math.random() * .3), c: COULEURS[i % COULEURS.length], parti: false }));
+    function eclater(x, y, c) {
+      const n = 60 + Math.floor(Math.random() * 30);
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2, v = 2.2 + Math.random() * 3.2;
+        etincelles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vie: 1, c: Math.random() < .2 ? "#ffffff" : c, r: 2 + Math.random() * 2 });
+      }
+      bip("ok");
+    }
+    (function pas(t) {
+      const e = t - debut;
+      ctx.globalCompositeOperation = "destination-out"; ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "source-over";
+      tirs.forEach(s => { if (!s.parti && e >= s.t) { s.parti = true; fusees.push({ x: s.x, y: H + 10, cy: s.y, vy: -(H - s.y) / 38, c: s.c }); } });
+      for (let i = fusees.length - 1; i >= 0; i--) {
+        const f = fusees[i]; f.y += f.vy;
+        ctx.fillStyle = "#ffd36b"; ctx.beginPath(); ctx.arc(f.x, f.y, 3.5, 0, 7); ctx.fill();
+        if (f.y <= f.cy) { eclater(f.x, f.y, f.c); fusees.splice(i, 1); }
+      }
+      for (let i = etincelles.length - 1; i >= 0; i--) {
+        const p = etincelles[i]; p.x += p.vx; p.y += p.vy; p.vx *= .97; p.vy = p.vy * .97 + .06; p.vie -= .013;
+        if (p.vie <= 0) { etincelles.splice(i, 1); continue; }
+        ctx.globalAlpha = Math.max(0, p.vie); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      }
+      if (e < DUREE || etincelles.length || fusees.length) requestAnimationFrame(pas); else ctx.clearRect(0, 0, W, H);
+    })(debut);
+  }
+
   // ---------- liste de mots ----------
   const ENTETES = ["mot", "mots", "lettre", "lettres", "mots/lettres", "lettres/mots", "liste"];
   function nettoyer(liste) {
@@ -779,7 +813,7 @@ textarea { min-height: 150px; resize: vertical; }
     fin = { resultat: r, precedent, record };
     aller("fin");
     const mieux = precedent && (p.mode === "timer" ? r.justes > precedent.justes : (taux(r) > taux(precedent) || (taux(r) === taux(precedent) && r.tempsMs < precedent.tempsMs - 1000)));
-    if (mieux || record) { bip("fete"); confettis(); }
+    if (!precedent || mieux || record) { bip("fete"); feuArtifice(); }
   }
   function arreter() {
     if (!partie) return;
