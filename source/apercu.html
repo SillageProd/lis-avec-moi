@@ -135,7 +135,9 @@ input[type="text"], input[type="url"], textarea {
 .duree b { font-size: clamp(36px, 8vw, 64px); line-height: 1; }
 .duree span { font-size: clamp(13px, 2.4vw, 18px); color: var(--encre-douce); }
 .duree[aria-pressed="true"] { border-color: var(--orange); background: #fff1e6; }
-.durees.nombres { grid-template-columns: repeat(5, 1fr); }
+.durees.nombres { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 900px; }
+.nombres .duree b { font-size: clamp(26px, 5.2vw, 50px); }
+.nombres .duree[data-v="new"] b { color: var(--orange); }
 .nombres .duree[aria-pressed="true"] { border-color: var(--cadre); background: #eceeff; }
 .duree[disabled] { opacity: .35; pointer-events: none; }
 .puce.normal[aria-pressed="true"] { background: var(--cadre); }
@@ -233,7 +235,7 @@ textarea { min-height: 150px; resize: vertical; }
 
 #confettis { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
 @media (max-width: 520px) {
-  .durees, .durees.nombres { grid-template-columns: repeat(3, 1fr); }
+  .durees, .durees.nombres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .rond, .espace { width: 56px; height: 56px; }
   .mode { min-height: 170px; }
 }
@@ -268,7 +270,7 @@ textarea { min-height: 150px; resize: vertical; }
   let source = lire("source", { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null });
   let lienSheet = lire("lienSheet", LIEN_SHEET_ECOLE);
   let sonActif = lire("son", true);
-  if (!Array.isArray(mots) || !mots.length) { mots = MOTS_EXEMPLE.slice(); source = { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null }; }
+  if (!Array.isArray(mots) || !mots.length) { mots = nettoyer(MOTS_EXEMPLE); source = { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null }; }
 
   const app = document.getElementById("app");
   let ecran = "profils";
@@ -296,9 +298,13 @@ textarea { min-height: 150px; resize: vertical; }
   const DUREES = [0.5, 1, 2, 3, 4, 5];
   const minutes = n => n < 1 ? Math.round(n * 60) + " secondes" : n + " minute" + (n > 1 ? "s" : "");
   const dureeCourte = n => n < 1 ? Math.round(n * 60) + " s" : n + " min";
-  const NOMBRES = [25, 50, 75, 100, "tout"];
-  const nombreTexte = n => n === "tout" ? "tous les mots" : n + " mots";
-  const nombrePossible = n => n === "tout" || n <= mots.length;
+  // « new » = les 25 dernières lignes de la liste (les mots ajoutés le plus récemment)
+  const NB_NEW = 25;
+  const NOMBRES = ["new", 25, 50, 75, 100, "tout"];
+  const nombreTexte = n => n === "tout" ? "tous les mots" : n === "new" ? "les nouveaux mots" : n + " mots";
+  const nombreLabel = n => n === "tout" ? "Tout" : n === "new" ? "New" : n;
+  const nombreLire = v => v === "tout" || v === "new" ? v : Number(v);
+  const nombrePossible = n => n === "tout" || n === "new" || n <= mots.length;
   const sauverProfils = () => ecrire("profils", profils);
   const sauverResultats = () => ecrire("resultats", resultats);
 
@@ -372,16 +378,16 @@ textarea { min-height: 150px; resize: vertical; }
   }
 
   // ---------- liste de mots ----------
-  const ENTETES = ["mot", "mots", "lettre", "lettres", "mots/lettres", "lettres/mots", "liste"];
+  // Doublons : on garde la dernière ligne, pour que « New » reprenne bien les 25 dernières lignes du Sheet
   function nettoyer(liste) {
-    const vus = new Set(), out = [];
-    liste.forEach((m, i) => {
-      const v = String(m == null ? "" : m).trim();
-      if (!v) return;
-      if (i === 0 && ENTETES.includes(v.toLowerCase())) return;
-      if (vus.has(v)) return;
-      vus.add(v); out.push(v);
-    });
+    const propres = liste.map(m => String(m == null ? "" : m).trim());
+    if (propres.length && ["mot", "mots", "lettre", "lettres", "mots/lettres", "lettres/mots", "liste"].includes(propres[0].toLowerCase())) propres.shift();
+    const out = [], vus = new Set();
+    for (let i = propres.length - 1; i >= 0; i--) {
+      const v = propres[i];
+      if (!v || vus.has(v)) continue;
+      vus.add(v); out.unshift(v);
+    }
     return out;
   }
   function premiereColonneCSV(texte) {
@@ -507,7 +513,7 @@ textarea { min-height: 150px; resize: vertical; }
 
   function vueNormal() {
     if (!nombrePossible(nombreChoisi)) nombreChoisi = "tout";
-    const btns = NOMBRES.map(n => `<button class="duree" data-a="nombre" data-v="${n}" aria-pressed="${n === nombreChoisi}" ${nombrePossible(n) ? "" : "disabled"}><b>${n === "tout" ? "Tout" : n}</b><span>${n === "tout" ? mots.length + " mots" : "mots"}</span></button>`).join("");
+    const btns = NOMBRES.map(n => `<button class="duree" data-a="nombre" data-v="${n}" aria-pressed="${n === nombreChoisi}" ${nombrePossible(n) ? "" : "disabled"}><b>${nombreLabel(n)}</b><span>${n === "tout" ? mots.length + " mots" : n === "new" ? Math.min(NB_NEW, mots.length) + " derniers" : "mots"}</span></button>`).join("");
     const manque = NOMBRES.some(n => !nombrePossible(n));
     return `
       ${barre(retour("versModes"), "<h2>Combien de mots ?</h2>", avatarProfil(profil))}
@@ -621,9 +627,9 @@ textarea { min-height: 150px; resize: vertical; }
       if (v.nombre == null) {
         const compte = {}; resultatsDe(profil.id, "normal").forEach(r => { const k = varianteDe(r); compte[k] = (compte[k] || 0) + 1; });
         const k = Object.keys(compte).sort((a, b) => compte[b] - compte[a])[0];
-        v.nombre = k == null ? nombreChoisi : (k === "tout" ? "tout" : Number(k));
+        v.nombre = k == null ? nombreChoisi : nombreLire(k);
       }
-      const pucesN = NOMBRES.map(n => `<button class="puce normal" data-a="progresNombre" data-v="${n}" aria-pressed="${n === v.nombre}">${n === "tout" ? "Tout" : n}</button>`).join("");
+      const pucesN = NOMBRES.map(n => `<button class="puce normal" data-a="progresNombre" data-v="${n}" aria-pressed="${n === v.nombre}">${nombreLabel(n)}</button>`).join("");
       const liste = resultatsDe(profil.id, "normal", v.nombre).slice(-12);
       const meilleur = liste.reduce((m, r) => Math.max(m, Math.round(taux(r) * 100)), 0);
       let rec = -1;
@@ -737,7 +743,9 @@ textarea { min-height: 150px; resize: vertical; }
     if (!mots.length) return;
     if (mode === "normal" && !nombrePossible(nombreChoisi)) nombreChoisi = "tout";
     const nombre = mode === "normal" ? nombreChoisi : null;
-    const pile = mode === "normal" && nombre !== "tout" ? melanger(mots).slice(0, nombre) : melanger(mots);
+    const pile = mode !== "normal" || nombre === "tout" ? melanger(mots)
+      : nombre === "new" ? melanger(mots.slice(-NB_NEW))
+      : melanger(mots).slice(0, nombre);
     partie = {
       mode, duree: mode === "timer" ? dureeChoisie : null, nombre,
       pile, index: 0, total: pile.length, mot: null,
@@ -836,13 +844,13 @@ textarea { min-height: 150px; resize: vertical; }
     duree(el) { dureeChoisie = Number(el.dataset.v); ecrire("duree", dureeChoisie); afficher(); },
     lancerTimer() { demarrer("timer"); },
     versNormal() { aller("normal"); },
-    nombre(el) { nombreChoisi = el.dataset.v === "tout" ? "tout" : Number(el.dataset.v); ecrire("nombre", nombreChoisi); afficher(); },
+    nombre(el) { nombreChoisi = nombreLire(el.dataset.v); ecrire("nombre", nombreChoisi); afficher(); },
     lancerNormal() { demarrer("normal"); },
     repondre(el) { repondre(el.dataset.v === "1"); },
     arreter,
     versProgres() { etatProgres = { mode: "timer", duree: null }; aller("progres"); },
     progresMode(el) { etatProgres.mode = el.dataset.v; afficher(); },
-    progresNombre(el) { etatProgres.nombre = el.dataset.v === "tout" ? "tout" : Number(el.dataset.v); afficher(); },
+    progresNombre(el) { etatProgres.nombre = nombreLire(el.dataset.v); afficher(); },
     progresDuree(el) { etatProgres.duree = Number(el.dataset.v); afficher(); },
     ouvrirPorte() {
       const a = 2 + Math.floor(Math.random() * 7), b = 3 + Math.floor(Math.random() * 6), bon = a * b;
