@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#d8f3ee">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icone-180.png">
+<link rel="icon" href="icone-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Lis avec moi</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lis avec moi">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Mise en page : une app plein écran, un écran à la fois, gros boutons pour petits doigts.
+   Look volontairement unique (clair et vif), quel que soit le thème de l'appareil. */
+:root {
+  color-scheme: light;
+  --ciel: #d8f3ee;          /* fond menthe */
+  --ciel-2: #bfeae2;
+  --encre: #243057;         /* texte */
+  --encre-douce: #5a6488;
+  --cadre: #7176d6;         /* bord des cadres, comme les étiquettes de l'école */
+  --papier: #ffffff;
+  --soleil: #ffb627;
+  --orange: #ff8a3d;
+  --vrai: #22b573;
+  --vrai-fonce: #168a55;
+  --faux: #f2545b;
+  --faux-fonce: #c63a41;
+  --ombre: 0 6px 0 rgba(36, 48, 87, .18);
+  --f-titre: "Fredoka", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --f-mot: "Andika", "Century Gothic", "Avenir Next", system-ui, sans-serif;
+}
+html, body { height: 100%; }
+body {
+  background: var(--ciel);
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(255,255,255,.55) 0 38px, transparent 39px),
+    radial-gradient(circle at 88% 12%, rgba(255,182,39,.28) 0 54px, transparent 55px),
+    radial-gradient(circle at 92% 86%, rgba(113,118,214,.18) 0 70px, transparent 71px),
+    radial-gradient(circle at 6% 92%, rgba(242,84,91,.14) 0 48px, transparent 49px);
+  color: var(--encre);
+  font-family: var(--f-titre);
+  font-size: 18px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+  overflow-x: hidden;
+}
+#app {
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex; flex-direction: column;
+  padding-block: 16px 20px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  max-width: 1100px; margin: 0 auto;
+}
+h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
+h1 { font-size: clamp(30px, 6vw, 52px); letter-spacing: .5px; }
+h2 { font-size: clamp(24px, 4.5vw, 36px); }
+p { margin: 0; }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 4px solid var(--soleil); outline-offset: 3px; }
+input[type="text"], input[type="url"], textarea {
+  font: inherit; font-family: var(--f-mot); color: var(--encre);
+  background: var(--papier); border: 3px solid var(--cadre); border-radius: 16px;
+  padding: 14px 16px; width: 100%; box-sizing: border-box; font-size: 20px;
+  -webkit-user-select: text; user-select: text;
+}
+
+/* barre du haut */
+.barre { display: flex; align-items: center; gap: 12px; min-height: 64px; }
+.barre .titre { flex: 1; min-width: 0; text-align: center; }
+.rond {
+  width: 64px; height: 64px; border-radius: 50%; flex: none;
+  background: var(--papier); box-shadow: var(--ombre);
+  display: grid; place-items: center; font-size: 28px;
+}
+.rond:active, .gros:active, .tuile:active, .duree:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(36,48,87,.18); }
+.espace { width: 64px; flex: none; }
+
+/* gros boutons */
+.gros {
+  min-height: 84px; padding: 0 28px; border-radius: 28px;
+  font-size: clamp(24px, 4vw, 32px); font-weight: 700;
+  background: var(--soleil); color: var(--encre); box-shadow: var(--ombre);
+  display: inline-flex; align-items: center; justify-content: center; gap: 14px;
+}
+.gros.bleu { background: var(--cadre); color: #fff; }
+.gros.vert { background: var(--vrai); color: #fff; }
+.gros.blanc { background: var(--papier); }
+.gros.petit { min-height: 60px; font-size: 20px; border-radius: 20px; padding: 0 20px; }
+.gros[disabled] { opacity: .45; pointer-events: none; }
+
+/* écran profils */
+.centre { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+.entete { text-align: center; display: grid; gap: 6px; }
+.entete p { color: var(--encre-douce); font-size: clamp(18px, 3vw, 24px); font-weight: 500; }
+.grille-profils { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; max-width: 900px; width: 100%; margin: 0 auto; }
+.tuile {
+  background: var(--papier); border-radius: 30px; box-shadow: var(--ombre);
+  padding: 18px 10px 16px; display: grid; justify-items: center; gap: 8px;
+  border: 6px solid var(--c, var(--cadre)); min-height: 170px; align-content: center;
+}
+.tuile .avatar { font-size: 64px; line-height: 1; }
+.tuile .nom { font-size: 24px; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
+.tuile.ajout { border-style: dashed; background: rgba(255,255,255,.6); color: var(--encre-douce); }
+.tuile.ajout .avatar { font-size: 56px; font-weight: 700; color: var(--cadre); }
+.bas { display: flex; justify-content: center; }
+.lien-parents { background: transparent; color: var(--encre-douce); font-size: 18px; font-weight: 600; padding: 14px 18px; border-radius: 14px; }
+
+/* création de profil */
+.panneau { background: var(--papier); border-radius: 30px; box-shadow: var(--ombre); padding: 22px; display: grid; gap: 18px; max-width: 760px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+.etiquette { font-size: 18px; font-weight: 600; color: var(--encre-douce); }
+.choix-animaux { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 10px; }
+.choix-animaux button { height: 72px; border-radius: 20px; background: var(--ciel); font-size: 40px; border: 4px solid transparent; }
+.choix-animaux button[aria-pressed="true"] { border-color: var(--cadre); background: #fff7e0; }
+.choix-couleurs { display: flex; flex-wrap: wrap; gap: 12px; }
+.choix-couleurs button { width: 60px; height: 60px; border-radius: 50%; background: var(--c); border: 5px solid #fff; box-shadow: 0 0 0 3px transparent; }
+.choix-couleurs button[aria-pressed="true"] { box-shadow: 0 0 0 4px var(--encre); }
+
+/* choix du mode */
+.modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 900px; width: 100%; margin: 0 auto; }
+.mode {
+  border-radius: 34px; padding: 26px 22px; min-height: 210px; box-shadow: var(--ombre);
+  display: grid; justify-items: center; align-content: center; gap: 10px; text-align: center;
+}
+.mode .ico { font-size: 72px; line-height: 1; }
+.mode .nom { font-size: clamp(30px, 5vw, 42px); font-weight: 700; }
+.mode .sous { font-size: 18px; font-weight: 500; opacity: .85; }
+.mode.timer { background: var(--orange); color: #fff; }
+.mode.normal { background: var(--cadre); color: #fff; }
+.mode:active { transform: translateY(4px); }
+
+/* choix du temps */
+.durees { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; max-width: 760px; width: 100%; margin: 0 auto; }
+.duree {
+  aspect-ratio: 1; max-width: 100%; border-radius: 26px; background: var(--papier); box-shadow: var(--ombre);
+  display: grid; place-content: center; text-align: center; border: 5px solid transparent;
+}
+.duree b { font-size: clamp(36px, 8vw, 64px); line-height: 1; }
+.duree span { font-size: clamp(13px, 2.4vw, 18px); color: var(--encre-douce); }
+.duree[aria-pressed="true"] { border-color: var(--orange); background: #fff1e6; }
+.durees.nombres { grid-template-columns: repeat(5, 1fr); }
+.nombres .duree[aria-pressed="true"] { border-color: var(--cadre); background: #eceeff; }
+.duree[disabled] { opacity: .35; pointer-events: none; }
+.puce.normal[aria-pressed="true"] { background: var(--cadre); }
+.note { text-align: center; color: var(--encre-douce); font-size: 18px; font-weight: 500; }
+
+/* jeu */
+.jeu { flex: 1; display: grid; grid-template-rows: auto 1fr auto; gap: 16px; min-height: 0; }
+.pastille { background: var(--papier); border-radius: 999px; padding: 10px 20px; font-size: clamp(24px, 4vw, 34px); font-weight: 700; box-shadow: var(--ombre); font-variant-numeric: tabular-nums; display: inline-flex; gap: 10px; align-items: center; }
+.pastille.urgent { background: var(--faux); color: #fff; }
+.scene { display: grid; place-items: center; min-height: 0; position: relative; }
+.cadre-mot {
+  background: var(--papier);
+  border: clamp(8px, 1.4vw, 13px) solid var(--cadre);
+  border-radius: clamp(26px, 4vw, 44px);
+  /* taille fixe : seul le texte s'adapte à l'intérieur */
+  width: min(88vw, 680px); height: clamp(170px, 34vh, 320px);
+  padding: 0 clamp(18px, 4vw, 40px);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 0 rgba(36,48,87,.14);
+  font-family: var(--f-mot); color: #2f3433;
+  line-height: 1.1; text-align: center; box-sizing: border-box; white-space: nowrap; overflow: hidden;
+  transform: rotate(-1.5deg);
+}
+.cadre-mot.entre { animation: entre .28s ease-out; }
+@keyframes entre { from { transform: rotate(-1.5deg) scale(.6); opacity: 0; } to { transform: rotate(-1.5deg) scale(1); opacity: 1; } }
+.verdict { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.verdict span { font-size: clamp(120px, 26vw, 260px); font-weight: 700; line-height: 1; animation: tampon .45s ease-out forwards; }
+.verdict.ok span { color: var(--vrai); }
+.verdict.ko span { color: var(--faux); }
+@keyframes tampon { 0% { transform: scale(2); opacity: 0; } 40% { transform: scale(1); opacity: .95; } 100% { transform: scale(1); opacity: 0; } }
+.reponses { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(14px, 3vw, 30px); max-width: 820px; width: 100%; margin: 0 auto; }
+.rep {
+  min-height: clamp(110px, 18vh, 170px); border-radius: 34px; color: #fff;
+  font-size: clamp(72px, 13vw, 120px); font-weight: 700; line-height: 1;
+  display: grid; place-items: center;
+}
+.rep.v { background: var(--vrai); box-shadow: 0 8px 0 var(--vrai-fonce); }
+.rep.x { background: var(--faux); box-shadow: 0 8px 0 var(--faux-fonce); }
+.rep:active { transform: translateY(6px); box-shadow: 0 2px 0 rgba(0,0,0,.2); }
+.rep.v:active { box-shadow: 0 2px 0 var(--vrai-fonce); }
+.rep.x:active { box-shadow: 0 2px 0 var(--faux-fonce); }
+
+/* fin de partie */
+.fin { flex: 1; display: grid; align-content: center; justify-items: center; gap: 22px; text-align: center; }
+.medaille { font-size: 96px; line-height: 1; }
+.score-grand { font-size: clamp(80px, 18vw, 150px); font-weight: 700; line-height: .9; color: var(--vrai); font-variant-numeric: tabular-nums; }
+.score-legende { font-size: clamp(22px, 4vw, 32px); font-weight: 600; }
+.cases { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.case { background: var(--papier); border-radius: 26px; box-shadow: var(--ombre); padding: 16px 24px; min-width: 130px; display: grid; gap: 2px; }
+.case b { font-size: 48px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.case span { font-size: 18px; color: var(--encre-douce); font-weight: 600; }
+.case.v b { color: var(--vrai); } .case.x b { color: var(--faux); } .case.t b { color: var(--cadre); }
+.message { background: var(--papier); border: 5px solid var(--soleil); border-radius: 26px; padding: 16px 22px; font-size: clamp(20px, 3.6vw, 28px); font-weight: 600; max-width: 680px; }
+.message.mieux { border-color: var(--vrai); }
+.badge { background: var(--soleil); border-radius: 999px; padding: 8px 20px; font-size: 22px; font-weight: 700; }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+
+/* progrès */
+.onglets { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.onglet { min-height: 60px; padding: 0 24px; border-radius: 20px; background: rgba(255,255,255,.6); font-size: 22px; font-weight: 600; }
+.onglet[aria-pressed="true"] { background: var(--papier); box-shadow: var(--ombre); }
+.onglet.timer[aria-pressed="true"] { color: var(--orange); }
+.onglet.normal[aria-pressed="true"] { color: var(--cadre); }
+.puces { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.puce { min-height: 52px; min-width: 76px; border-radius: 16px; background: rgba(255,255,255,.6); font-size: 20px; font-weight: 600; }
+.puce[aria-pressed="true"] { background: var(--orange); color: #fff; }
+.graphe { background: var(--papier); border-radius: 30px; box-shadow: var(--ombre); padding: 18px 12px 12px; overflow-x: auto; }
+.graphe svg { display: block; height: auto; }
+.graphe text { font-family: var(--f-titre); }
+.vide { text-align: center; color: var(--encre-douce); font-size: 22px; padding: 40px 10px; display: grid; gap: 8px; }
+.vide .ico { font-size: 64px; }
+.resume { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+
+/* espace parents */
+.parents { display: grid; gap: 18px; max-width: 820px; width: 100%; margin: 0 auto; }
+.parents h3 { font-size: 24px; }
+.parents .aide { color: var(--encre-douce); font-size: 17px; font-weight: 500; line-height: 1.45; font-family: system-ui, sans-serif; }
+.parents ol { margin: 0; padding-left: 22px; display: grid; gap: 4px; }
+.ligne { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ligne > input { flex: 1 1 260px; min-width: 0; }
+.apercu { display: flex; flex-wrap: wrap; gap: 8px; max-height: 190px; overflow: auto; }
+.apercu span { font-family: var(--f-mot); background: var(--ciel); border: 2px solid var(--cadre); border-radius: 10px; padding: 4px 10px; font-size: 18px; }
+.statut { font-size: 17px; font-weight: 600; font-family: system-ui, sans-serif; }
+.statut.ok { color: var(--vrai-fonce); } .statut.ko { color: var(--faux-fonce); }
+.profil-ligne { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 2px dashed var(--ciel-2); }
+.profil-ligne:first-of-type { border-top: 0; }
+.profil-ligne .nom { flex: 1; min-width: 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.btn-danger { background: #ffe3e4; color: var(--faux-fonce); min-height: 52px; padding: 0 16px; border-radius: 16px; font-weight: 600; font-size: 17px; }
+.btn-danger.arme { background: var(--faux); color: #fff; }
+textarea { min-height: 150px; resize: vertical; }
+.porte { display: grid; gap: 18px; justify-items: center; text-align: center; }
+.porte .question { font-size: 44px; font-weight: 700; }
+.porte .ligne { justify-content: center; }
+.porte .ligne button { width: 90px; }
+
+#confettis { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+@media (max-width: 520px) {
+  .durees, .durees.nombres { grid-template-columns: repeat(3, 1fr); }
+  .rond, .espace { width: 56px; height: 56px; }
+  .mode { min-height: 170px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
+}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<canvas id="confettis"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  // ---------- stockage ----------
+  const PREFIXE = "lam_";
+  const lire = (cle, defaut) => { try { const v = localStorage.getItem(PREFIXE + cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; } };
+  const ecrire = (cle, val) => { try { localStorage.setItem(PREFIXE + cle, JSON.stringify(val)); } catch (e) {} };
+
+  // Copie du Google Sheet de l'école (23/10/2026), utilisée tant que le Sheet ne peut pas être relu
+  const LIEN_SHEET_ECOLE = "https://docs.google.com/spreadsheets/d/1EfFFQNCYZ1uqT7OIEDxHxz28Mjmj7JtSmtxUtvzAKz8/edit?usp=sharing";
+  const MOTS_EXEMPLE = ["puin", "nek", "g", "look", "toog", "lijm", "taak", "kam", "o", "sok", "nijp", "op", "luis", "sis", "ak", "t", "ui", "muil", "teek", "aak", "kijk", "l", "ap", "eek", "kil", "nijl", "es", "laat", "ip", "kan", "al", "kip", "tom", "is", "ijs", "k", "aal", "kaap", "eek", "kuip", "pijn", "paal", "tem", "tik", "an", "lijs", "kik", "los", "lel", "lijn", "kuit", "keel", "tuin", "lijk", "pijl", "ken", "laan", "e", "lis", "in", "ton", "is", "ep", "een", "eep", "p", "ak", "lip", "kook", "i", "kak", "oom", "aan", "a", "tuil", "teen", "n", "ik", "el", "som", "mom", "neen", "ees", "en", "ne", "ijs", "oo", "kin", "lal", "pan", "nis", "et", "keet", "luik", "noot", "koos", "nog", "maag", "laag", "loog"];
+  const MAX_PROFILS = 6;
+  const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
+  const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
+
+  let profils = lire("profils", []);
+  let resultats = lire("resultats", []);
+  let mots = lire("mots", null);
+  let source = lire("source", { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null });
+  let lienSheet = lire("lienSheet", LIEN_SHEET_ECOLE);
+  let sonActif = lire("son", true);
+  if (!Array.isArray(mots) || !mots.length) { mots = MOTS_EXEMPLE.slice(); source = { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null }; }
+
+  const app = document.getElementById("app");
+  let ecran = "profils";
+  let profil = null;             // profil sélectionné
+  let brouillon = null;          // profil en création
+  let dureeChoisie = lire("duree", 2);
+  let nombreChoisi = lire("nombre", "tout");
+  let partie = null;
+  let fin = null;                // résultat affiché à la fin
+  let etatProgres = { mode: "timer", duree: null };
+  let porte = null;              // petite question d'accès à l'espace parents
+  let statutMots = null;
+  let suppressionArmee = null;
+
+  // ---------- utilitaires ----------
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const melanger = t => { const a = t.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const mmss = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  const tempsEnMots = ms => {
+    const s = Math.max(0, Math.round(ms / 1000)), m = Math.floor(s / 60), r = s % 60;
+    if (!m) return r + " seconde" + (r > 1 ? "s" : "");
+    return m + " min" + (r ? " " + String(r).padStart(2, "0") + " s" : "");
+  };
+  const dateCourte = iso => { const d = new Date(iso); return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0"); };
+  const DUREES = [0.5, 1, 2, 3, 4, 5];
+  const minutes = n => n < 1 ? Math.round(n * 60) + " secondes" : n + " minute" + (n > 1 ? "s" : "");
+  const dureeCourte = n => n < 1 ? Math.round(n * 60) + " s" : n + " min";
+  const NOMBRES = [25, 50, 75, 100, "tout"];
+  const nombreTexte = n => n === "tout" ? "tous les mots" : n + " mots";
+  const nombrePossible = n => n === "tout" || n <= mots.length;
+  const sauverProfils = () => ecrire("profils", profils);
+  const sauverResultats = () => ecrire("resultats", resultats);
+
+  // ---------- sons ----------
+  let audio = null;
+  function bip(type) {
+    if (!sonActif) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const notes = type === "ok" ? [660, 880] : type === "ko" ? [300, 220] : [523, 659, 784, 1047];
+      notes.forEach((f, i) => {
+        const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + i * 0.09;
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+        o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.18);
+      });
+    } catch (e) {}
+  }
+
+  // ---------- confettis ----------
+  const toile = document.getElementById("confettis");
+  function confettis() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const ctx = toile.getContext("2d"), dpr = window.devicePixelRatio || 1;
+    toile.width = innerWidth * dpr; toile.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+    const parts = Array.from({ length: 140 }, () => ({
+      x: Math.random() * innerWidth, y: -20 - Math.random() * innerHeight * .4,
+      vx: (Math.random() - .5) * 3, vy: 2 + Math.random() * 4, r: Math.random() * 6.28, vr: (Math.random() - .5) * .3,
+      c: COULEURS[Math.floor(Math.random() * COULEURS.length)], w: 8 + Math.random() * 8, h: 6 + Math.random() * 6
+    }));
+    const debut = performance.now();
+    (function pas(t) {
+      ctx.clearRect(0, 0, innerWidth, innerHeight);
+      parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .05; p.r += p.vr; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore(); });
+      if (t - debut < 2600) requestAnimationFrame(pas); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+    })(debut);
+  }
+
+  // ---------- liste de mots ----------
+  const ENTETES = ["mot", "mots", "lettre", "lettres", "mots/lettres", "lettres/mots", "liste"];
+  function nettoyer(liste) {
+    const vus = new Set(), out = [];
+    liste.forEach((m, i) => {
+      const v = String(m == null ? "" : m).trim();
+      if (!v) return;
+      if (i === 0 && ENTETES.includes(v.toLowerCase())) return;
+      if (vus.has(v)) return;
+      vus.add(v); out.push(v);
+    });
+    return out;
+  }
+  function premiereColonneCSV(texte) {
+    return texte.replace(/^﻿/, "").split(/\r?\n/).map(l => {
+      l = l.trim();
+      if (l.startsWith('"')) { const m = l.match(/^"((?:[^"]|"")*)"/); return m ? m[1].replace(/""/g, '"') : ""; }
+      return l.split(/[;,\t]/)[0];
+    });
+  }
+  function idSheet(lien) {
+    const m = String(lien).match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    return m ? m[1] : (/^[a-zA-Z0-9_-]{30,}$/.test(lien.trim()) ? lien.trim() : null);
+  }
+  function appliquerMots(liste, src) {
+    const propre = nettoyer(liste);
+    if (!propre.length) return false;
+    mots = propre; source = src;
+    ecrire("mots", mots); ecrire("source", source);
+    return true;
+  }
+  async function chargerSheet(lien, silencieux) {
+    const id = idSheet(lien);
+    if (!id) { if (!silencieux) statutMots = { ok: false, texte: "Ce lien ne ressemble pas à un lien Google Sheets." }; return false; }
+    try {
+      const rep = await fetch("https://docs.google.com/spreadsheets/d/" + id + "/gviz/tq?tqx=out:csv", { cache: "no-store" });
+      if (!rep.ok) throw new Error(rep.status);
+      const texte = await rep.text();
+      if (/<html/i.test(texte.slice(0, 200))) throw new Error("privé");
+      const ok = appliquerMots(premiereColonneCSV(texte), { type: "sheet", libelle: "Google Sheet", maj: new Date().toISOString() });
+      if (!ok) throw new Error("vide");
+      if (!silencieux) statutMots = { ok: true, texte: mots.length + " mots et lettres chargés depuis le Google Sheet." };
+      return true;
+    } catch (e) {
+      if (!silencieux) statutMots = { ok: false, texte: "Impossible de lire le Google Sheet. Vérifiez qu'il est partagé avec « Tous les utilisateurs disposant du lien » et que l'appareil est connecté à Internet." };
+      return false;
+    }
+  }
+  async function lireFichier(fichier) {
+    const nom = fichier.name.toLowerCase();
+    try {
+      let liste;
+      if (/\.(xlsx|xls|ods)$/.test(nom)) {
+        if (!window.XLSX) throw new Error("lib");
+        const classeur = XLSX.read(await fichier.arrayBuffer(), { type: "array" });
+        const feuille = classeur.Sheets[classeur.SheetNames[0]];
+        liste = XLSX.utils.sheet_to_json(feuille, { header: 1, blankrows: false }).map(l => l[0]);
+      } else {
+        liste = premiereColonneCSV(await fichier.text());
+      }
+      if (!appliquerMots(liste, { type: "fichier", libelle: "Fichier « " + fichier.name + " »", maj: new Date().toISOString() })) throw new Error("vide");
+      statutMots = { ok: true, texte: mots.length + " mots et lettres importés depuis " + fichier.name + "." };
+    } catch (e) {
+      statutMots = { ok: false, texte: "Ce fichier n'a pas pu être lu. Utilisez un fichier Excel ou CSV avec un mot ou une lettre par ligne dans la colonne A." };
+    }
+    afficher();
+  }
+
+  // ---------- résultats ----------
+  // variante : la durée en Timer, le nombre de mots en Normal (anciennes parties sans nombre = « tout »)
+  const varianteDe = r => r.mode === "timer" ? r.duree : (r.nombre || "tout");
+  const resultatsDe = (pid, mode, variante) => resultats.filter(r => r.profil === pid && r.mode === mode && (variante == null || varianteDe(r) === variante));
+  const taux = r => r.total ? r.justes / r.total : 0;
+
+  // ---------- écrans ----------
+  function barre(gauche, titre, droite) {
+    return `<div class="barre">${gauche || '<span class="espace"></span>'}<div class="titre">${titre || ""}</div>${droite || '<span class="espace"></span>'}</div>`;
+  }
+  const retour = (action, label) => `<button class="rond" data-a="${action}" aria-label="${label || "Retour"}">⬅️</button>`;
+  const avatarProfil = p => `<span class="rond" style="background:${p.couleur}" aria-hidden="true">${p.animal}</span>`;
+
+  function vueProfils() {
+    const tuiles = profils.map(p => `
+      <button class="tuile" style="--c:${p.couleur}" data-a="choisirProfil" data-id="${p.id}">
+        <span class="avatar">${p.animal}</span><span class="nom">${esc(p.nom)}</span>
+      </button>`).join("");
+    const ajout = profils.length < MAX_PROFILS ? `<button class="tuile ajout" data-a="nouveauProfil"><span class="avatar">+</span><span class="nom">Nouveau</span></button>` : "";
+    return `
+      <div class="centre">
+        <div class="entete"><h1>Qui veut lire ?</h1><p>${profils.length ? "Touche ton animal pour commencer" : "Crée ton profil pour commencer"}</p></div>
+        <div class="grille-profils">${tuiles}${ajout}</div>
+      </div>
+      <div class="bas"><button class="lien-parents" data-a="ouvrirPorte">🔒 Espace parents</button></div>`;
+  }
+
+  function vueNouveauProfil() {
+    const b = brouillon;
+    return `
+      ${barre(retour("versProfils"), "<h2>Nouveau profil</h2>")}
+      <div class="centre">
+        <div class="panneau">
+          <label class="etiquette" for="nomProfil">Ton prénom</label>
+          <input id="nomProfil" type="text" maxlength="16" autocomplete="off" value="${esc(b.nom)}" placeholder="Prénom">
+          <div class="etiquette">Ton animal</div>
+          <div class="choix-animaux">${ANIMAUX.map(a => `<button data-a="animal" data-v="${a}" aria-pressed="${a === b.animal}">${a}</button>`).join("")}</div>
+          <div class="etiquette">Ta couleur</div>
+          <div class="choix-couleurs">${COULEURS.map(c => `<button data-a="couleur" data-v="${c}" style="--c:${c}" aria-label="Couleur" aria-pressed="${c === b.couleur}"></button>`).join("")}</div>
+          <button class="gros vert" data-a="creerProfil" id="btnCreer">C'est moi ! ✓</button>
+        </div>
+      </div>`;
+  }
+
+  function vueModes() {
+    return `
+      ${barre(retour("versProfils", "Changer de profil"), `<h2>Bonjour ${esc(profil.nom)} !</h2>`, avatarProfil(profil))}
+      <div class="centre">
+        <div class="modes">
+          <button class="mode timer" data-a="versTimer"><span class="ico">⏱️</span><span class="nom">Timer</span><span class="sous">Course contre la montre</span></button>
+          <button class="mode normal" data-a="versNormal" ${mots.length ? "" : "disabled"}><span class="ico">📖</span><span class="nom">Normal</span><span class="sous">Tous les mots, sans se presser</span></button>
+        </div>
+        <div class="bas"><button class="gros blanc" data-a="versProgres">📈 Mes progrès</button></div>
+      </div>`;
+  }
+
+  function vueTimer() {
+    const btns = DUREES.map(n => `<button class="duree" data-a="duree" data-v="${n}" aria-pressed="${n === dureeChoisie}"><b>${n < 1 ? Math.round(n * 60) : n}</b><span>${n < 1 ? "sec" : "min"}</span></button>`).join("");
+    return `
+      ${barre(retour("versModes"), "<h2>Combien de temps ?</h2>", avatarProfil(profil))}
+      <div class="centre">
+        <div class="durees">${btns}</div>
+        <div class="bas"><button class="gros vert" data-a="lancerTimer" style="min-width:260px">▶ Start</button></div>
+      </div>`;
+  }
+
+  function vueNormal() {
+    if (!nombrePossible(nombreChoisi)) nombreChoisi = "tout";
+    const btns = NOMBRES.map(n => `<button class="duree" data-a="nombre" data-v="${n}" aria-pressed="${n === nombreChoisi}" ${nombrePossible(n) ? "" : "disabled"}><b>${n === "tout" ? "Tout" : n}</b><span>${n === "tout" ? mots.length + " mots" : "mots"}</span></button>`).join("");
+    const manque = NOMBRES.some(n => !nombrePossible(n));
+    return `
+      ${barre(retour("versModes"), "<h2>Combien de mots ?</h2>", avatarProfil(profil))}
+      <div class="centre">
+        <div class="durees nombres">${btns}</div>
+        ${manque ? `<p class="note">La liste contient ${mots.length} mots et lettres.</p>` : ""}
+        <div class="bas"><button class="gros vert" data-a="lancerNormal" style="min-width:260px">▶ Start</button></div>
+      </div>`;
+  }
+
+  function vueJeu() {
+    const p = partie;
+    const pastille = p.mode === "timer"
+      ? `<span class="pastille" id="chrono">⏱️ <span id="chronoTxt">${mmss(p.duree * 60000)}</span></span>`
+      : `<span class="pastille"><span id="compteur">${p.index + 1} / ${p.total}</span></span>`;
+    return `
+      <div class="jeu">
+        ${barre(`<button class="rond" data-a="arreter" id="btnArreter" aria-label="Arrêter">✖️</button>`, pastille, avatarProfil(profil))}
+        <div class="scene"><div class="cadre-mot entre" id="mot"></div><div class="verdict" id="verdict"></div></div>
+        <div class="reponses">
+          <button class="rep v" data-a="repondre" data-v="1" aria-label="Juste">V</button>
+          <button class="rep x" data-a="repondre" data-v="0" aria-label="Faux">X</button>
+        </div>
+      </div>`;
+  }
+
+  function vueFin() {
+    const r = fin.resultat, prec = fin.precedent;
+    let medaille = "⭐", message = "", classe = "";
+    if (r.mode === "timer") {
+      if (!prec) message = `C'est ton premier score en ${minutes(r.duree)} !`;
+      else if (r.justes > prec.justes) { message = `Bravo, tu as fait mieux que la dernière fois (${prec.justes}) !`; classe = "mieux"; medaille = "🏆"; }
+      else if (r.justes === prec.justes) message = `Pareil que la dernière fois (${prec.justes}). Bien joué !`;
+      else message = `La dernière fois, tu en avais ${prec.justes}. Tu vas y arriver !`;
+      return `
+        <div class="fin">
+          <div class="medaille">${medaille}</div>
+          ${fin.record ? '<span class="badge">Nouveau record !</span>' : ""}
+          <div class="score-grand">${r.justes}</div>
+          <div class="score-legende">mot${r.justes > 1 ? "s" : ""} juste${r.justes > 1 ? "s" : ""} en ${minutes(r.duree)}</div>
+          <div class="message ${classe}">${message}</div>
+          <div class="actions"><button class="gros vert" data-a="lancerTimer">🔁 Rejouer</button><button class="gros blanc" data-a="versModes">🏠 Menu</button></div>
+        </div>`;
+    }
+    const morceaux = [];
+    if (!prec) message = `C'est ta première partie avec ${nombreTexte(r.nombre)} !`;
+    else {
+      const mieuxJuste = taux(r) > taux(prec), pireJuste = taux(r) < taux(prec);
+      const plusRapide = r.tempsMs < prec.tempsMs - 1000, plusLent = r.tempsMs > prec.tempsMs + 1000;
+      if (mieuxJuste) morceaux.push("plus de bonnes réponses");
+      if (plusRapide) morceaux.push("plus rapide de " + tempsEnMots(prec.tempsMs - r.tempsMs));
+      if (mieuxJuste || (!pireJuste && plusRapide)) { message = "Bravo, tu as fait mieux que la dernière fois : " + morceaux.join(" et ") + " !"; classe = "mieux"; medaille = "🏆"; }
+      else if (!pireJuste && !plusLent) message = "Aussi bien que la dernière fois. Bien joué !";
+      else message = `La dernière fois : ${prec.justes} juste${prec.justes > 1 ? "s" : ""} sur ${prec.total} en ${tempsEnMots(prec.tempsMs)}. Continue, tu progresses !`;
+    }
+    return `
+      <div class="fin">
+        <div class="medaille">${medaille}</div>
+        <h1>C'est fini !</h1>
+        <div class="cases">
+          <div class="case v"><b>${r.justes}</b><span>juste${r.justes > 1 ? "s" : ""} ✓</span></div>
+          <div class="case x"><b>${r.faux}</b><span>faux ✗</span></div>
+          <div class="case t"><b>${mmss(r.tempsMs)}</b><span>temps</span></div>
+        </div>
+        <div class="message ${classe}">${message}</div>
+        <div class="actions"><button class="gros vert" data-a="lancerNormal">🔁 Rejouer</button><button class="gros blanc" data-a="versModes">🏠 Menu</button></div>
+      </div>`;
+  }
+
+  function grapheBarres(points, opts) {
+    // points: [{valeur, etiquette, sous, record}]
+    const n = points.length, pas = 74, gauche = 18, haut = 46, hauteur = 230, bas = 58;
+    const L = Math.max(560, gauche * 2 + n * pas), H = haut + hauteur + bas;
+    const max = Math.max(opts.max || 1, ...points.map(p => p.valeur));
+    const y = v => haut + hauteur - (v / max) * hauteur;
+    const lignes = [0.25, 0.5, 0.75, 1].map(f => `<line x1="${gauche}" x2="${L - gauche}" y1="${y(max * f)}" y2="${y(max * f)}" stroke="#d8f3ee" stroke-width="2" stroke-dasharray="6 6"/>`).join("");
+    const barres = points.map((p, i) => {
+      const cx = gauche + pas * i + pas / 2, w = 48, yb = y(p.valeur), h = Math.max(6, haut + hauteur - yb);
+      const c = COULEURS[i % COULEURS.length];
+      return `
+        <rect x="${cx - w / 2}" y="${haut + hauteur - h}" width="${w}" height="${h}" rx="14" fill="${c}"/>
+        <rect x="${cx - w / 2 + 8}" y="${haut + hauteur - h + 8}" width="10" height="${Math.max(0, h - 22)}" rx="5" fill="#ffffff" opacity=".35"/>
+        ${p.record ? `<text x="${cx}" y="${haut + hauteur - h - 30}" text-anchor="middle" font-size="24">⭐</text>` : ""}
+        <text x="${cx}" y="${haut + hauteur - h - 8}" text-anchor="middle" font-size="20" font-weight="700" fill="#243057">${p.etiquette}</text>
+        <text x="${cx}" y="${haut + hauteur + 26}" text-anchor="middle" font-size="16" fill="#5a6488">${p.date}</text>
+        ${p.sous ? `<text x="${cx}" y="${haut + hauteur + 48}" text-anchor="middle" font-size="15" font-weight="600" fill="#7176d6">${p.sous}</text>` : ""}`;
+    }).join("");
+    return `<svg viewBox="0 0 ${L} ${H}" width="${L}" style="max-width:none;width:${L}px" role="img" aria-label="${esc(opts.titre)}">
+      ${lignes}<line x1="${gauche}" x2="${L - gauche}" y1="${haut + hauteur}" y2="${haut + hauteur}" stroke="#243057" stroke-width="3" stroke-linecap="round"/>${barres}</svg>`;
+  }
+
+  function vueProgres() {
+    const v = etatProgres;
+    const tousTimer = resultatsDe(profil.id, "timer");
+    if (v.duree == null) {
+      const compte = {}; tousTimer.forEach(r => compte[r.duree] = (compte[r.duree] || 0) + 1);
+      v.duree = Number(Object.keys(compte).sort((a, b) => compte[b] - compte[a])[0]) || dureeChoisie;
+    }
+    let contenu = "";
+    if (v.mode === "timer") {
+      const liste = resultatsDe(profil.id, "timer", v.duree).slice(-12);
+      const puces = DUREES.map(n => `<button class="puce" data-a="progresDuree" data-v="${n}" aria-pressed="${n === v.duree}">${dureeCourte(n)}</button>`).join("");
+      const meilleur = liste.reduce((m, r) => Math.max(m, r.justes), 0);
+      let rec = -1;
+      const points = liste.map(r => { const p = { valeur: r.justes, etiquette: r.justes, date: dateCourte(r.date), record: r.justes > rec && r.justes === meilleur }; if (p.record) rec = r.justes; return p; });
+      contenu = `<div class="puces">${puces}</div>` + (liste.length
+        ? `<div class="resume"><div class="case v"><b>${meilleur}</b><span>record en ${dureeCourte(v.duree)}</span></div><div class="case t"><b>${resultatsDe(profil.id, "timer", v.duree).length}</b><span>parties</span></div></div>
+           <div class="graphe">${grapheBarres(points, { max: 5, titre: "Mots justes en " + minutes(v.duree) })}</div>`
+        : `<div class="graphe"><div class="vide"><span class="ico">⏱️</span>Pas encore de partie en ${minutes(v.duree)}.<br>Lance un Timer pour voir ton score ici !</div></div>`);
+    } else {
+      if (v.nombre == null) {
+        const compte = {}; resultatsDe(profil.id, "normal").forEach(r => { const k = varianteDe(r); compte[k] = (compte[k] || 0) + 1; });
+        const k = Object.keys(compte).sort((a, b) => compte[b] - compte[a])[0];
+        v.nombre = k == null ? nombreChoisi : (k === "tout" ? "tout" : Number(k));
+      }
+      const pucesN = NOMBRES.map(n => `<button class="puce normal" data-a="progresNombre" data-v="${n}" aria-pressed="${n === v.nombre}">${n === "tout" ? "Tout" : n}</button>`).join("");
+      const liste = resultatsDe(profil.id, "normal", v.nombre).slice(-12);
+      const meilleur = liste.reduce((m, r) => Math.max(m, Math.round(taux(r) * 100)), 0);
+      let rec = -1;
+      const points = liste.map(r => { const pc = Math.round(taux(r) * 100); const p = { valeur: pc, etiquette: pc + "%", date: dateCourte(r.date), sous: "⏱ " + mmss(r.tempsMs), record: pc > rec && pc === meilleur }; if (p.record) rec = pc; return p; });
+      const plusRapide = liste.length ? Math.min(...liste.map(r => r.tempsMs)) : 0;
+      contenu = `<div class="puces">${pucesN}</div>` + (liste.length
+        ? `<div class="resume"><div class="case v"><b>${meilleur}%</b><span>meilleur score</span></div><div class="case t"><b>${mmss(plusRapide)}</b><span>plus rapide</span></div><div class="case"><b>${resultatsDe(profil.id, "normal", v.nombre).length}</b><span>parties</span></div></div>
+           <div class="graphe">${grapheBarres(points, { max: 100, titre: "Pourcentage de bonnes réponses" })}</div>`
+        : `<div class="graphe"><div class="vide"><span class="ico">📖</span>Pas encore de partie avec ${nombreTexte(v.nombre)}.<br>Joue une partie pour voir ton score ici !</div></div>`);
+    }
+    return `
+      ${barre(retour("versModes"), `<h2>Les progrès de ${esc(profil.nom)}</h2>`, avatarProfil(profil))}
+      <div class="parents" style="padding-top:12px">
+        <div class="onglets">
+          <button class="onglet timer" data-a="progresMode" data-v="timer" aria-pressed="${v.mode === "timer"}">⏱️ Timer</button>
+          <button class="onglet normal" data-a="progresMode" data-v="normal" aria-pressed="${v.mode === "normal"}">📖 Normal</button>
+        </div>
+        ${contenu}
+      </div>`;
+  }
+
+  function vuePorte() {
+    return `
+      ${barre(retour("versProfils"), "<h2>Espace parents</h2>")}
+      <div class="centre"><div class="panneau porte">
+        <p class="etiquette">Pour entrer, réponds à cette question :</p>
+        <div class="question">${porte.a} × ${porte.b} = ?</div>
+        <div class="ligne">${porte.choix.map(c => `<button class="gros blanc" data-a="porteRep" data-v="${c}">${c}</button>`).join("")}</div>
+      </div></div>`;
+  }
+
+  function vueParents() {
+    const maj = source.maj ? " · mis à jour le " + new Date(source.maj).toLocaleDateString("fr-BE") + " à " + new Date(source.maj).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }) : "";
+    const lignesProfils = profils.map(p => `
+      <div class="profil-ligne">${avatarProfil(p)}<span class="nom">${esc(p.nom)}</span>
+        <span class="aide">${resultats.filter(r => r.profil === p.id).length} parties</span>
+        <button class="btn-danger ${suppressionArmee === p.id ? "arme" : ""}" data-a="supprimerProfil" data-id="${p.id}">${suppressionArmee === p.id ? "Confirmer la suppression" : "Supprimer"}</button>
+      </div>`).join("") || `<p class="aide">Aucun profil pour l'instant.</p>`;
+    return `
+      ${barre(retour("versProfils"), "<h2>Espace parents</h2>")}
+      <div class="parents" style="padding-top:12px">
+        <section class="panneau">
+          <h3>Mots et lettres à lire</h3>
+          <p class="aide"><b>${mots.length}</b> mots et lettres · ${esc(source.libelle)}${maj}</p>
+          <div class="apercu">${mots.map(m => `<span>${esc(m)}</span>`).join("")}</div>
+          ${statutMots ? `<p class="statut ${statutMots.ok ? "ok" : "ko"}">${esc(statutMots.texte)}</p>` : ""}
+        </section>
+
+        <section class="panneau">
+          <h3>Depuis un Google Sheet (conseillé)</h3>
+          <ol class="aide">
+            <li>Créez un Google Sheet et écrivez un mot ou une lettre par ligne dans la <b>colonne A</b>.</li>
+            <li>Cliquez sur <b>Partager</b>, puis choisissez « Tous les utilisateurs disposant du lien » en lecture.</li>
+            <li>Collez le lien ici. L'app relit la liste à chaque ouverture.</li>
+          </ol>
+          <div class="ligne">
+            <input id="lienSheet" type="url" placeholder="https://docs.google.com/spreadsheets/d/…" value="${esc(lienSheet)}" autocomplete="off">
+            <button class="gros bleu petit" data-a="chargerSheet">Charger</button>
+          </div>
+        </section>
+
+        <section class="panneau">
+          <h3>Depuis un fichier Excel ou CSV</h3>
+          <p class="aide">Un mot ou une lettre par ligne dans la colonne A. La liste actuelle est remplacée.</p>
+          <div class="ligne"><label class="gros blanc petit" for="fichierMots" style="cursor:pointer">📄 Choisir un fichier</label>
+            <input id="fichierMots" type="file" accept=".xlsx,.xls,.ods,.csv,.txt" hidden></div>
+        </section>
+
+        <section class="panneau">
+          <h3>Écrire la liste à la main</h3>
+          <p class="aide">Un mot ou une lettre par ligne.</p>
+          <textarea id="listeManuelle">${esc(mots.join("\n"))}</textarea>
+          <div class="ligne"><button class="gros bleu petit" data-a="enregistrerListe">Enregistrer la liste</button></div>
+        </section>
+
+        <section class="panneau">
+          <h3>Profils (${profils.length}/${MAX_PROFILS})</h3>
+          <p class="aide">Supprimer un profil efface aussi tous ses résultats.</p>
+          ${lignesProfils}
+        </section>
+
+        <section class="panneau">
+          <h3>Sons</h3>
+          <div class="ligne"><button class="gros petit ${sonActif ? "vert" : "blanc"}" data-a="son">${sonActif ? "🔊 Sons activés" : "🔇 Sons coupés"}</button></div>
+        </section>
+      </div>`;
+  }
+
+  // ---------- rendu ----------
+  function afficher() {
+    const vues = { profils: vueProfils, nouveau: vueNouveauProfil, modes: vueModes, timer: vueTimer, normal: vueNormal, jeu: vueJeu, fin: vueFin, progres: vueProgres, porte: vuePorte, parents: vueParents };
+    app.innerHTML = vues[ecran]();
+    if (ecran === "jeu") montrerMot();
+    if (ecran === "nouveau") {
+      const champ = document.getElementById("nomProfil");
+      const maj = () => { brouillon.nom = champ.value; document.getElementById("btnCreer").disabled = !champ.value.trim(); };
+      champ.addEventListener("input", maj); maj();
+    }
+    if (ecran === "parents") {
+      document.getElementById("fichierMots").addEventListener("change", e => { const f = e.target.files[0]; if (f) lireFichier(f); });
+    }
+  }
+  const aller = e => { ecran = e; window.scrollTo(0, 0); afficher(); };
+
+  // ---------- partie ----------
+  let verrou = null;
+  async function garderEcranAllume() { try { verrou = await navigator.wakeLock.request("screen"); } catch (e) {} }
+  function lacherEcran() { try { verrou && verrou.release(); } catch (e) {} verrou = null; }
+
+  function demarrer(mode) {
+    if (!mots.length) return;
+    if (mode === "normal" && !nombrePossible(nombreChoisi)) nombreChoisi = "tout";
+    const nombre = mode === "normal" ? nombreChoisi : null;
+    const pile = mode === "normal" && nombre !== "tout" ? melanger(mots).slice(0, nombre) : melanger(mots);
+    partie = {
+      mode, duree: mode === "timer" ? dureeChoisie : null, nombre,
+      pile, index: 0, total: pile.length, mot: null,
+      justes: 0, faux: 0, debut: Date.now(), occupe: false, minuteur: null, arretArme: false
+    };
+    partie.mot = partie.pile[0];
+    aller("jeu");
+    garderEcranAllume();
+    if (mode === "timer") partie.minuteur = setInterval(tic, 200);
+  }
+  function tic() {
+    const reste = partie.duree * 60000 - (Date.now() - partie.debut);
+    const el = document.getElementById("chronoTxt");
+    if (el) { el.textContent = mmss(reste); document.getElementById("chrono").classList.toggle("urgent", reste <= 10000); }
+    if (reste <= 0) terminer();
+  }
+  function montrerMot() {
+    const el = document.getElementById("mot");
+    if (!el || !partie) return;
+    // le cadre garde toujours la même taille : on ajuste seulement la taille du texte
+    const st = getComputedStyle(el);
+    const largeur = el.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight), hauteur = el.clientHeight;
+    const taille = Math.max(24, Math.min(hauteur * 0.62, largeur / (partie.mot.length * 0.56 + 0.2)));
+    el.style.fontSize = taille + "px";
+    el.textContent = partie.mot;
+    el.classList.remove("entre"); void el.offsetWidth; el.classList.add("entre");
+    const c = document.getElementById("compteur"); if (c) c.textContent = (partie.index + 1) + " / " + partie.total;
+  }
+  function repondre(juste) {
+    if (!partie || partie.occupe) return;
+    partie.occupe = true;
+    juste ? partie.justes++ : partie.faux++;
+    bip(juste ? "ok" : "ko");
+    const v = document.getElementById("verdict");
+    v.className = "verdict " + (juste ? "ok" : "ko"); v.innerHTML = `<span>${juste ? "V" : "X"}</span>`;
+    setTimeout(() => {
+      if (!partie) return;
+      v.innerHTML = ""; partie.occupe = false;
+      partie.index++;
+      if (partie.index >= partie.pile.length) {
+        if (partie.mode === "normal") return terminer();
+        // Timer : on remélange, sans répéter le dernier mot tout de suite
+        const dernier = partie.mot; let p = melanger(mots);
+        if (p.length > 1 && p[0] === dernier) p.push(p.shift());
+        partie.pile = partie.pile.concat(p);
+      }
+      partie.mot = partie.pile[partie.index];
+      montrerMot();
+    }, 380);
+  }
+  function terminer() {
+    if (!partie) return;
+    clearInterval(partie.minuteur); lacherEcran();
+    const p = partie; partie = null;
+    const tempsMs = p.mode === "timer" ? p.duree * 60000 : Date.now() - p.debut;
+    const r = { id: Date.now().toString(36), profil: profil.id, mode: p.mode, duree: p.duree, nombre: p.nombre, justes: p.justes, faux: p.faux, total: p.justes + p.faux, tempsMs, date: new Date().toISOString() };
+    const anciens = resultatsDe(profil.id, p.mode, p.mode === "timer" ? p.duree : p.nombre);
+    const precedent = anciens[anciens.length - 1] || null;
+    const record = p.mode === "timer" && anciens.length > 0 && r.justes > Math.max(...anciens.map(a => a.justes));
+    resultats.push(r); sauverResultats();
+    fin = { resultat: r, precedent, record };
+    aller("fin");
+    const mieux = precedent && (p.mode === "timer" ? r.justes > precedent.justes : (taux(r) > taux(precedent) || (taux(r) === taux(precedent) && r.tempsMs < precedent.tempsMs - 1000)));
+    if (mieux || record) { bip("fete"); confettis(); }
+  }
+  function arreter() {
+    if (!partie) return;
+    if (!partie.arretArme) {
+      partie.arretArme = true;
+      const b = document.getElementById("btnArreter"); b.textContent = "Sûr ?"; b.style.fontSize = "18px"; b.style.background = "#ffe3e4";
+      setTimeout(() => { if (partie && partie.arretArme) { partie.arretArme = false; b.textContent = "✖️"; b.style.fontSize = ""; b.style.background = ""; } }, 2500);
+      return;
+    }
+    clearInterval(partie.minuteur); lacherEcran(); partie = null; aller("modes");
+  }
+
+  // ---------- actions ----------
+  const actions = {
+    versProfils() { profil = null; statutMots = null; suppressionArmee = null; aller("profils"); },
+    choisirProfil(el) { profil = profils.find(p => p.id === el.dataset.id); etatProgres = { mode: "timer", duree: null }; aller("modes"); },
+    nouveauProfil() {
+      const pris = profils.map(p => p.animal);
+      brouillon = { nom: "", animal: ANIMAUX.find(a => !pris.includes(a)) || ANIMAUX[0], couleur: COULEURS[profils.length % COULEURS.length] };
+      aller("nouveau");
+      setTimeout(() => { const c = document.getElementById("nomProfil"); c && c.focus(); }, 50);
+    },
+    animal(el) { brouillon.animal = el.dataset.v; afficher(); },
+    couleur(el) { brouillon.couleur = el.dataset.v; afficher(); },
+    creerProfil() {
+      const nom = brouillon.nom.trim(); if (!nom || profils.length >= MAX_PROFILS) return;
+      profil = { id: "p" + Date.now().toString(36), nom, animal: brouillon.animal, couleur: brouillon.couleur };
+      profils.push(profil); sauverProfils(); bip("ok"); aller("modes");
+    },
+    versModes() { aller("modes"); },
+    versTimer() { aller("timer"); },
+    duree(el) { dureeChoisie = Number(el.dataset.v); ecrire("duree", dureeChoisie); afficher(); },
+    lancerTimer() { demarrer("timer"); },
+    versNormal() { aller("normal"); },
+    nombre(el) { nombreChoisi = el.dataset.v === "tout" ? "tout" : Number(el.dataset.v); ecrire("nombre", nombreChoisi); afficher(); },
+    lancerNormal() { demarrer("normal"); },
+    repondre(el) { repondre(el.dataset.v === "1"); },
+    arreter,
+    versProgres() { etatProgres = { mode: "timer", duree: null }; aller("progres"); },
+    progresMode(el) { etatProgres.mode = el.dataset.v; afficher(); },
+    progresNombre(el) { etatProgres.nombre = el.dataset.v === "tout" ? "tout" : Number(el.dataset.v); afficher(); },
+    progresDuree(el) { etatProgres.duree = Number(el.dataset.v); afficher(); },
+    ouvrirPorte() {
+      const a = 2 + Math.floor(Math.random() * 7), b = 3 + Math.floor(Math.random() * 6), bon = a * b;
+      const choix = new Set([bon]); while (choix.size < 3) choix.add(bon + (Math.floor(Math.random() * 11) - 5) || bon + 7);
+      porte = { a, b, bon, choix: melanger([...choix]) };
+      aller("porte");
+    },
+    porteRep(el) { if (Number(el.dataset.v) === porte.bon) { statutMots = null; aller("parents"); } else actions.ouvrirPorte(); },
+    async chargerSheet() {
+      lienSheet = document.getElementById("lienSheet").value.trim(); ecrire("lienSheet", lienSheet);
+      statutMots = { ok: true, texte: "Chargement…" }; afficher();
+      await chargerSheet(lienSheet, false); afficher();
+    },
+    enregistrerListe() {
+      const ok = appliquerMots(document.getElementById("listeManuelle").value.split(/\r?\n/), { type: "manuel", libelle: "Liste écrite à la main", maj: new Date().toISOString() });
+      if (ok) { lienSheet = ""; ecrire("lienSheet", ""); }
+      statutMots = ok ? { ok: true, texte: "Liste enregistrée : " + mots.length + " mots et lettres." } : { ok: false, texte: "La liste est vide." };
+      afficher();
+    },
+    supprimerProfil(el) {
+      const id = el.dataset.id;
+      if (suppressionArmee !== id) { suppressionArmee = id; return afficher(); }
+      profils = profils.filter(p => p.id !== id); resultats = resultats.filter(r => r.profil !== id);
+      sauverProfils(); sauverResultats(); suppressionArmee = null; afficher();
+    },
+    son() { sonActif = !sonActif; ecrire("son", sonActif); afficher(); }
+  };
+
+  app.addEventListener("click", e => {
+    const el = e.target.closest("[data-a]");
+    if (!el || el.disabled) return;
+    const f = actions[el.dataset.a]; if (f) f(el);
+  });
+  document.addEventListener("keydown", e => {
+    if (ecran !== "jeu") return;
+    if (e.key === "v" || e.key === "V" || e.key === "ArrowLeft") repondre(true);
+    if (e.key === "x" || e.key === "X" || e.key === "ArrowRight") repondre(false);
+  });
+  addEventListener("resize", () => { if (ecran === "jeu") { const el = document.getElementById("mot"); if (el && partie) el.style.fontSize = ""; montrerMot(); } });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && partie) garderEcranAllume(); });
+
+  afficher();
+  // Mise à jour automatique de la liste depuis le Google Sheet à l'ouverture
+  if (lienSheet) chargerSheet(lienSheet, true).then(ok => { if (ok && (ecran === "parents" || ecran === "modes")) afficher(); });
+})();
+</script>
+
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});</script>
+</body>
+</html>
