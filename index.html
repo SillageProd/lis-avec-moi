@@ -254,6 +254,47 @@ textarea { min-height: 150px; resize: vertical; }
   padding: 14px 22px; border-radius: 20px; box-shadow: var(--ombre); max-width: calc(100% - 32px); text-align: center;
 }
 #toast.visible { transform: translate(-50%, 0); opacity: 1; }
+#fete {
+  position: fixed; inset: 0; z-index: 19; overflow: hidden; cursor: pointer;
+  display: grid; place-items: center; text-align: center; color: #fff;
+  padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: radial-gradient(circle at 50% 38%, #4a3aa8 0%, #262a6b 45%, #141634 100%);
+  animation: feteEntre .35s ease-out both;
+}
+#fete.sortie { animation: feteSort .45s ease-in forwards; }
+@keyframes feteEntre { from { opacity: 0; } to { opacity: 1; } }
+@keyframes feteSort { to { opacity: 0; transform: scale(1.08); } }
+#fete .rayons {
+  position: absolute; left: 50%; top: 38%; width: 240vmax; height: 240vmax; margin: -120vmax 0 0 -120vmax;
+  background: repeating-conic-gradient(rgba(255, 214, 107, .14) 0 9deg, transparent 9deg 18deg);
+  animation: tourne 16s linear infinite;
+}
+@keyframes tourne { to { transform: rotate(360deg); } }
+#fete .etoiles { position: absolute; inset: 0; pointer-events: none; }
+#fete .etoile { position: absolute; font-size: var(--t); animation: scintille 2.4s ease-in-out var(--d) infinite both; }
+@keyframes scintille { 0%, 100% { opacity: .15; transform: scale(.6) rotate(0); } 50% { opacity: 1; transform: scale(1.2) rotate(25deg); } }
+.fete-contenu { position: relative; display: grid; gap: clamp(10px, 2vh, 18px); justify-items: center; max-width: 900px; }
+.fete-emoji { font-size: clamp(110px, 26vw, 220px); line-height: 1; filter: drop-shadow(0 12px 0 rgba(0,0,0,.3));
+  animation: arrive .9s cubic-bezier(.3,1.7,.5,1) both, danse 2.2s ease-in-out 1s infinite; }
+@keyframes arrive { from { transform: scale(0) rotate(-30deg); } to { transform: scale(1) rotate(0); } }
+@keyframes danse { 0%, 100% { transform: rotate(-7deg) scale(1); } 50% { transform: rotate(7deg) scale(1.08); } }
+.fete-titre { font-size: clamp(42px, 10.5vw, 108px); line-height: 1.05; margin: 0; }
+.fete-titre .mot { display: inline-block; white-space: nowrap; }
+.fete-titre .l { display: inline-block; text-shadow: 0 5px 0 rgba(0,0,0,.35);
+  animation: lettre .6s cubic-bezier(.3,1.9,.5,1) both; animation-delay: calc(.35s + var(--i) * 55ms); }
+.fete-titre .l:nth-child(5n+1) { color: #ffd36b; } .fete-titre .l:nth-child(5n+2) { color: #ff9a5a; }
+.fete-titre .l:nth-child(5n+3) { color: #7ee8b8; } .fete-titre .l:nth-child(5n+4) { color: #ff9bd2; } .fete-titre .l:nth-child(5n) { color: #8fd3ff; }
+@keyframes lettre { from { transform: translateY(-120px) scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+.fete-extra { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; justify-content: center; animation: monte .6s .9s both; }
+.fete-grand { font-size: clamp(70px, 17vw, 150px); font-weight: 700; line-height: 1; color: #ffd36b; font-variant-numeric: tabular-nums; text-shadow: 0 6px 0 rgba(0,0,0,.35); }
+.fete-legende { font-size: clamp(22px, 4vw, 34px); font-weight: 600; }
+.fete-delta { background: var(--vrai); border-radius: 999px; padding: 10px 22px; font-size: clamp(19px, 3.4vw, 28px); font-weight: 700; box-shadow: 0 5px 0 var(--vrai-fonce);
+  animation: monte .6s 1.4s both, pulse 1.1s ease-in-out 2s infinite; }
+@keyframes pulse { 50% { transform: scale(1.07); } }
+.fete-sous { font-size: clamp(20px, 3.8vw, 30px); font-weight: 600; max-width: 26ch; animation: monte .6s 1.7s both; }
+.fete-touche { font-size: 17px; opacity: .7; animation: monte .6s 2.4s both; }
+@keyframes monte { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 #confettis { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
 @media (max-width: 520px) {
   .durees, .durees.nombres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -350,11 +391,28 @@ textarea { min-height: 150px; resize: vertical; }
     } catch (e) {}
   }
 
-  // « Bravo » dit à voix haute, si les sons sont activés
-  function direBravo(nom) {
+  // Petite fanfare pour les grandes fêtes
+  function fanfare() {
+    if (!sonActif) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const air = [[523, 0, .14], [523, .16, .14], [523, .32, .14], [659, .48, .3], [784, .82, .18], [659, 1.02, .14], [784, 1.18, .2], [1047, 1.42, .7]];
+      air.forEach(([f, d, l]) => {
+        [1, 2].forEach((mult, k) => {
+          const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + d;
+          o.type = k ? "sine" : "triangle"; o.frequency.value = f * mult;
+          g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(k ? 0.05 : 0.2, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + l);
+          o.connect(g).connect(audio.destination); o.start(t); o.stop(t + l + 0.05);
+        });
+      });
+    } catch (e) {}
+  }
+
+  // Phrase dite à voix haute, si les sons sont activés
+  function dire(texte) {
     if (!sonActif || !window.speechSynthesis) return;
     try {
-      const u = new SpeechSynthesisUtterance("Bravo " + nom + " !");
+      const u = new SpeechSynthesisUtterance(texte);
       u.lang = "fr-FR"; u.rate = .95; u.pitch = 1.2;
       const voix = speechSynthesis.getVoices().find(v => /^fr/i.test(v.lang)); if (voix) u.voice = voix;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
@@ -381,17 +439,17 @@ textarea { min-height: 150px; resize: vertical; }
   }
 
   // ---------- feu d'artifice (quand l'enfant bat son score) ----------
-  function feuArtifice() {
+  function feuArtifice(grand) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const ctx = toile.getContext("2d"), dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
     toile.width = W * dpr; toile.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const fusees = [], etincelles = [], debut = performance.now(), DUREE = 4200;
-    const tirs = Array.from({ length: 7 }, (_, i) => ({ t: i * 450 + Math.random() * 200, x: W * (.15 + Math.random() * .7), y: H * (.12 + Math.random() * .3), c: COULEURS[i % COULEURS.length], parti: false }));
+    const fusees = [], etincelles = [], debut = performance.now(), DUREE = grand ? 6500 : 4200, force = grand ? 1.6 : 1;
+    const tirs = Array.from({ length: grand ? 18 : 7 }, (_, i) => ({ t: i * (grand ? 340 : 450) + Math.random() * 200, x: W * (.08 + Math.random() * .84), y: H * (.08 + Math.random() * .4), c: COULEURS[i % COULEURS.length], parti: false }));
     function eclater(x, y, c) {
-      const n = 60 + Math.floor(Math.random() * 30);
+      const n = Math.round((60 + Math.random() * 30) * force);
       for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2, v = 2.2 + Math.random() * 3.2;
-        etincelles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vie: 1, c: Math.random() < .2 ? "#ffffff" : c, r: 2 + Math.random() * 2 });
+        const a = (i / n) * Math.PI * 2, v = (2.2 + Math.random() * 3.2) * force;
+        etincelles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vie: 1, c: Math.random() < .2 ? "#ffffff" : c, r: (2 + Math.random() * 2) * (grand ? 1.3 : 1) });
       }
       bip("ok");
     }
@@ -412,6 +470,43 @@ textarea { min-height: 150px; resize: vertical; }
       }
       if (e < DUREE || etincelles.length || fusees.length) requestAnimationFrame(pas); else ctx.clearRect(0, 0, W, H);
     })(debut);
+  }
+
+  // ---------- grande fête plein écran (première partie, progrès, record) ----------
+  function grandeFete(o) {
+    const ancienne = document.getElementById("fete"); if (ancienne) ancienne.remove();
+    const f = document.createElement("div");
+    f.id = "fete"; f.setAttribute("role", "dialog"); f.setAttribute("aria-label", o.titre);
+    let i = 0;
+    const titre = o.titre.split(" ").map(m => `<span class="mot">${[...m].map(c => `<span class="l" style="--i:${i++}">${esc(c)}</span>`).join("")}</span>`).join(" ");
+    const etoiles = Array.from({ length: 14 }, (_, k) => `<span class="etoile" style="left:${(k * 7.3 + Math.random() * 5) % 100}%;top:${Math.random() * 100}%;--d:${(Math.random() * 3).toFixed(2)}s;--t:${(18 + Math.random() * 30).toFixed(0)}px">${k % 3 ? "⭐" : "✨"}</span>`).join("");
+    f.innerHTML = `
+      <div class="rayons"></div><div class="etoiles">${etoiles}</div>
+      <div class="fete-contenu">
+        <div class="fete-emoji">${o.emoji}</div>
+        <h2 class="fete-titre">${titre}</h2>
+        <div class="fete-extra"><span class="fete-grand" data-cible="${o.valeur}" data-suffixe="${o.suffixe || ""}">0${o.suffixe || ""}</span><span class="fete-legende">${esc(o.legende)}</span></div>
+        ${o.delta ? `<div class="fete-delta">${esc(o.delta)}</div>` : ""}
+        <p class="fete-sous">${esc(o.sous)}</p>
+        <p class="fete-touche">Touche l'écran pour continuer</p>
+      </div>`;
+    document.body.appendChild(f);
+    // le score monte de 0 à sa valeur
+    const g = f.querySelector(".fete-grand"), cible = Number(g.dataset.cible), suf = g.dataset.suffixe, t0 = performance.now() + 900;
+    (function compte(t) {
+      const k = Math.min(1, Math.max(0, (t - t0) / 1200));
+      g.textContent = Math.round(cible * (1 - Math.pow(1 - k, 3))) + suf;
+      if (k < 1 && f.isConnected) requestAnimationFrame(compte);
+    })(performance.now());
+    const ouverture = Date.now();
+    const fermer = force => {
+      if (!f.isConnected || (!force && Date.now() - ouverture < 1500)) return;
+      f.classList.add("sortie"); setTimeout(() => f.remove(), 450);
+    };
+    f.addEventListener("click", () => fermer(false));
+    setTimeout(() => fermer(true), 8000);
+    fanfare(); feuArtifice(true);
+    setTimeout(() => dire(o.parole), 1600);
   }
 
   // ---------- liste de mots ----------
@@ -722,6 +817,7 @@ textarea { min-height: 150px; resize: vertical; }
       <div class="fin">
         <div class="medaille">${medaille}</div>
         <h1 class="bravo">Bravo ${esc(profil.nom)} !</h1>
+        ${fin.record ? '<span class="badge">Nouveau record !</span>' : ""}
         <div class="cases">
           <div class="case v"><b>${r.justes}</b><span>juste${r.justes > 1 ? "s" : ""} ✓</span></div>
           <div class="case x"><b>${r.faux}</b><span>faux ✗</span></div>
@@ -975,13 +1071,23 @@ textarea { min-height: 150px; resize: vertical; }
     const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), profil: profil.id, mode: p.mode, duree: p.duree, nombre: p.nombre, justes: p.justes, faux: p.faux, total: p.justes + p.faux, tempsMs, date: new Date().toISOString() };
     const anciens = resultatsDe(profil.id, p.mode, p.mode === "timer" ? p.duree : p.nombre);
     const precedent = anciens[anciens.length - 1] || null;
-    const record = p.mode === "timer" && anciens.length > 0 && r.justes > Math.max(...anciens.map(a => a.justes));
+    const record = anciens.length > 0 && [...anciens, r].sort(meilleurDabord)[0] === r;
     resultats.push(r); sauverResultats(); synchroniser();
     fin = { resultat: r, precedent, record };
     aller("fin");
     const mieux = precedent && (p.mode === "timer" ? r.justes > precedent.justes : (taux(r) > taux(precedent) || (taux(r) === taux(precedent) && r.tempsMs < precedent.tempsMs - 1000)));
-    if (!precedent || mieux || record) { bip("fete"); feuArtifice(); }
-    setTimeout(() => direBravo(profil.nom), 500);
+    const nom = profil.nom, pc = Math.round(taux(r) * 100);
+    const valeur = p.mode === "timer" ? { valeur: r.justes, legende: r.justes > 1 ? "mots justes" : "mot juste" } : { valeur: pc, suffixe: " %", legende: "de bonnes réponses" };
+    let delta = "";
+    if (precedent && mieux) {
+      if (p.mode === "timer") { const d = r.justes - precedent.justes; delta = "+" + d + (d > 1 ? " mots" : " mot") + " par rapport à la dernière fois"; }
+      else if (pc > Math.round(taux(precedent) * 100)) delta = "+" + (pc - Math.round(taux(precedent) * 100)) + " % de bonnes réponses";
+      else delta = tempsEnMots(precedent.tempsMs - r.tempsMs) + " plus rapide !";
+    }
+    if (record) grandeFete({ emoji: "🏆", titre: "Nouveau record !", sous: nom + ", tu n'as jamais fait aussi bien. Tu es une vraie star !", delta, parole: "Bravo " + nom + " ! Nouveau record !", ...valeur });
+    else if (mieux) grandeFete({ emoji: "🚀", titre: "Super " + nom + " !", sous: "Tu as fait mieux que la dernière fois. Continue comme ça !", delta, parole: "Super " + nom + " ! Tu as fait mieux que la dernière fois !", ...valeur });
+    else if (!precedent) grandeFete({ emoji: "🌟", titre: "Bravo " + nom + " !", sous: "Ta toute première partie : c'est un super début !", parole: "Bravo " + nom + " ! C'est un super début !", ...valeur });
+    else setTimeout(() => dire("Bravo " + nom + " !"), 500);
   }
   function arreter() {
     if (!partie) return;
