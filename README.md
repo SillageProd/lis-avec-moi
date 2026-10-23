@@ -1,6 +1,7 @@
 # Lis avec moi
 
 Petite app pour aider les enfants (4 à 8 ans) à lire les mots et les lettres vus à l'école.
+Adresse : https://sillageprod.github.io/lis-avec-moi/ (édition néerlandaise : https://sillageprod.github.io/lis-avec-moi/nl/).
 Elle s'installe sur iPad et iPhone depuis Safari : **Partager → Sur l'écran d'accueil**.
 
 - Jusqu'à 6 profils, sans mot de passe.
