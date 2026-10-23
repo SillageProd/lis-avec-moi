@@ -111,6 +111,7 @@ input[type="text"], input[type="url"], textarea {
 .tuile.ajout { border-style: dashed; background: rgba(255,255,255,.6); color: var(--encre-douce); }
 .tuile.ajout .avatar { font-size: 56px; font-weight: 700; color: var(--cadre); }
 .bas { display: flex; justify-content: center; }
+.copyright { text-align: center; color: var(--encre-douce); font-size: 14px; font-weight: 500; opacity: .8; margin: 4px 0 0; }
 .lien-parents { background: transparent; color: var(--encre-douce); font-size: 18px; font-weight: 600; padding: 14px 18px; border-radius: 14px; }
 
 /* création de profil */
@@ -558,7 +559,8 @@ textarea { min-height: 150px; resize: vertical; }
         <div class="entete"><h1>Qui veut lire ?</h1><p>${profils.length ? "Touche ton animal pour commencer" : "Crée ton profil pour commencer"}</p></div>
         <div class="grille-profils">${tuiles}${ajout}</div>
       </div>
-      <div class="bas"><button class="lien-parents" data-a="ouvrirPorte">🔒 Espace parents</button></div>`;
+      <div class="bas"><button class="lien-parents" data-a="ouvrirPorte">🔒 Espace parents</button></div>
+      <p class="copyright">© ${new Date().getFullYear()} Sillage Prod</p>`;
   }
 
   function vueNouveauProfil() {
