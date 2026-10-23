@@ -226,9 +226,12 @@ input[type="text"], input[type="url"], textarea {
 .apercu span { font-family: var(--f-mot); background: var(--ciel); border: 2px solid var(--cadre); border-radius: 10px; padding: 4px 10px; font-size: 18px; }
 .statut { font-size: 17px; font-weight: 600; font-family: system-ui, sans-serif; }
 .statut.ok { color: var(--vrai-fonce); } .statut.ko { color: var(--faux-fonce); }
-.profil-ligne { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 2px dashed var(--ciel-2); }
+.profil-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 0; border-top: 2px dashed var(--ciel-2); }
+.profil-ligne .qui { flex: 1 1 140px; min-width: 0; display: grid; gap: 2px; }
+.profil-ligne .confirmer { flex: 1 1 100%; background: #fff1f1; border: 3px solid var(--faux); border-radius: 18px; padding: 14px 16px; display: grid; gap: 12px; }
+.profil-ligne .confirmer p { font-size: 18px; font-weight: 500; line-height: 1.4; font-family: system-ui, sans-serif; }
 .profil-ligne:first-of-type { border-top: 0; }
-.profil-ligne .nom { flex: 1; min-width: 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.profil-ligne .nom { min-width: 0; font-size: 22px; font-weight: 600; overflow-wrap: anywhere; }
 .btn-danger { background: #ffe3e4; color: var(--faux-fonce); min-height: 52px; padding: 0 16px; border-radius: 16px; font-weight: 600; font-size: 17px; }
 .btn-danger.arme { background: var(--faux); color: #fff; }
 textarea { min-height: 150px; resize: vertical; }
@@ -894,11 +897,19 @@ textarea { min-height: 150px; resize: vertical; }
 
   function vueParents() {
     const maj = source.maj ? " · mis à jour le " + new Date(source.maj).toLocaleDateString("fr-BE") + " à " + new Date(source.maj).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }) : "";
-    const lignesProfils = profils.map(p => `
-      <div class="profil-ligne">${avatarProfil(p)}<span class="nom">${esc(p.nom)}</span>
-        <span class="aide">${resultats.filter(r => r.profil === p.id).length} parties</span>
-        <button class="btn-danger ${suppressionArmee === p.id ? "arme" : ""}" data-a="supprimerProfil" data-id="${p.id}">${suppressionArmee === p.id ? "Confirmer la suppression" : "Supprimer"}</button>
-      </div>`).join("") || `<p class="aide">Aucun profil pour l'instant.</p>`;
+    const lignesProfils = profils.map(p => {
+      const n = resultats.filter(r => r.profil === p.id).length;
+      return `
+      <div class="profil-ligne">${avatarProfil(p)}
+        <div class="qui"><span class="nom">${esc(p.nom)}</span><span class="aide">${n} partie${n > 1 ? "s" : ""}</span></div>
+        ${suppressionArmee === p.id ? "" : `<button class="btn-danger" data-a="supprimerProfil" data-id="${p.id}">Supprimer</button>`}
+        ${suppressionArmee === p.id ? `
+        <div class="confirmer">
+          <p>Supprimer <b>${esc(p.nom)}</b> et ${n > 1 ? "ses " + n + " parties" : n ? "sa partie" : "son profil"} ?${lienSynchro ? " Ce sera aussi effacé sur les autres appareils." : ""}</p>
+          <div class="ligne"><button class="btn-danger arme" data-a="supprimerProfil" data-id="${p.id}">Oui, supprimer</button><button class="gros blanc petit" data-a="annulerSuppression">Annuler</button></div>
+        </div>` : ""}
+      </div>`;
+    }).join("") || `<p class="aide">Aucun profil pour l'instant.</p>`;
     return `
       ${barre(retour("versProfils"), "<h2>Espace parents</h2>")}
       <div class="parents" style="padding-top:12px">
@@ -1136,6 +1147,7 @@ textarea { min-height: 150px; resize: vertical; }
       statutMots = ok ? { ok: true, texte: "Liste enregistrée : " + mots.length + " mots et lettres." } : { ok: false, texte: "La liste est vide." };
       afficher();
     },
+    annulerSuppression() { suppressionArmee = null; afficher(); },
     supprimerProfil(el) {
       const id = el.dataset.id;
       if (suppressionArmee !== id) { suppressionArmee = id; return afficher(); }
