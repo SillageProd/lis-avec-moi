@@ -342,7 +342,7 @@ textarea { min-height: 150px; resize: vertical; }
   const MOTS_EXEMPLE_NL = ["a", "e", "i", "o", "u", "m", "p", "k", "r", "s", "ik", "en", "op", "vis", "kam", "sok", "pen", "maan", "roos", "boom"];
   const MAX_PROFILS = 6;
   // Numéro de version (MAJEUR.MINEUR.CORRECTIF) : à augmenter à chaque mise en ligne
-  const VERSION = "1.6.1";
+  const VERSION = "1.7.0";
   let versionEnLigne = null;   // version publiée sur le site, lue dans version.json
   const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
   const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
@@ -356,9 +356,12 @@ textarea { min-height: 150px; resize: vertical; }
   let lienSynchro = NL ? "" : lire("lienSynchro", "");
   let supprimes = lire("supprimes", []);           // profils supprimés, à transmettre aux autres appareils
   let etatSynchro = lire("etatSynchro", null);     // { ok, date, texte }
-  if (!Array.isArray(mots) || !mots.length) { mots = nettoyer(MOTS_EXEMPLE); source = { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null }; }
+  if (!Array.isArray(mots) || !mots.length) { mots = nettoyer(MOTS_EXEMPLE); if (!NL) source = { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null }; }
   // Date du dernier changement de la liste de mots (affichée sous le copyright)
   let motsDate = lire("motsDate", source.maj || null);
+  // Mots apparus lors du dernier ajout (bouton New) ; null tant qu'aucun ajout n'a été vu
+  let motsNouveaux = lire("motsNouveaux", null);
+  const retenirNouveaux = ajoutes => { if (ajoutes.length) { motsNouveaux = ajoutes; ecrire("motsNouveaux", motsNouveaux); } };
   // Édition partage : liste du Sheet + mots ajoutés par les parents (gardés à part, jamais écrasés)
   let motsSheet = lire("motsSheet", null);
   let motsPerso = lire("motsPerso", []);
@@ -393,8 +396,9 @@ textarea { min-height: 150px; resize: vertical; }
   const DUREES = [0.5, 1, 2, 3, 4, 5];
   const minutes = n => n < 1 ? Math.round(n * 60) + L(" secondes", " seconden") : n + L(" minute" + (n > 1 ? "s" : ""), n === 1 ? " minuut" : " minuten");
   const dureeCourte = n => n < 1 ? Math.round(n * 60) + " s" : n + " min";
-  // « new » = les 25 dernières lignes de la liste (les mots ajoutés le plus récemment)
-  const NB_NEW = 25;
+  // « new » = les mots du dernier ajout ; sans ajout connu, les 15 dernières lignes de la liste
+  const NB_NEW = 15;
+  const listeNew = () => { const l = (motsNouveaux || []).filter(m => mots.includes(m)); return l.length ? l : mots.slice(-NB_NEW); };
   const NOMBRES = ["new", 25, 50, 75, 100, "tout"];
   const nombreTexte = n => n === "tout" ? L("tous les mots", "alle woorden") : n === "new" ? L("les nouveaux mots", "de nieuwe woorden") : n + L(" mots", " woorden");
   const nombreLabel = n => n === "tout" ? L("Tout", "Alles") : n === "new" ? L("New", "Nieuw") : n;
@@ -564,7 +568,8 @@ textarea { min-height: 150px; resize: vertical; }
   function appliquerMots(liste, src) {
     const propre = nettoyer(liste);
     if (!propre.length) return false;
-    const avant = JSON.stringify(NL ? motsSheet : mots);
+    const avant = JSON.stringify(NL ? motsSheet : mots), ancien = new Set(NL ? motsSheet : mots);
+    if (source.type !== "exemple") retenirNouveaux(propre.filter(m => !ancien.has(m)));
     if (JSON.stringify(propre) !== avant || !motsDate) { motsDate = new Date().toISOString(); ecrire("motsDate", motsDate); }
     if (NL) {
       motsSheet = propre; ecrire("motsSheet", motsSheet);
@@ -748,7 +753,7 @@ textarea { min-height: 150px; resize: vertical; }
       </div>
       <div class="bas"><button class="lien-parents" data-a="ouvrirPorte">🔒 ${L("Espace parents", "Voor ouders")}</button></div>
       <p class="copyright">© ${new Date().getFullYear()} Sillage Prod</p>
-      <p class="version">${L("Version", "Versie")} ${VERSION}${L("", "-NL")}${motsDate ? L(" · mots mis à jour le ", " · woorden bijgewerkt op ") + new Date(motsDate).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "numeric" }) : ""}</p>
+      <p class="version">${L("Version", "Versie")} ${VERSION}${L("", "-NL")}${motsDate ? " · " + new Date(motsDate).toLocaleDateString(LOCALE, { day: "2-digit", month: "2-digit", year: "numeric" }) : ""}</p>
       ${versionEnLigne && versionEnLigne !== VERSION ? `<div class="bas"><button class="maj" data-a="mettreAJour">${L(`⬇️ Nouvelle version ${esc(versionEnLigne)} : touchez pour mettre à jour`, `⬇️ Nieuwe versie ${esc(versionEnLigne)}-NL: tik om bij te werken`)}</button></div>` : ""}`;
   }
 
@@ -793,7 +798,7 @@ textarea { min-height: 150px; resize: vertical; }
 
   function vueNormal() {
     if (!nombrePossible(nombreChoisi)) nombreChoisi = "tout";
-    const btns = NOMBRES.map(n => `<button class="duree" data-a="nombre" data-v="${n}" aria-pressed="${n === nombreChoisi}" ${nombrePossible(n) ? "" : "disabled"}><b>${nombreLabel(n)}</b><span>${n === "tout" ? mots.length + L(" mots", " woorden") : n === "new" ? Math.min(NB_NEW, mots.length) + L(" derniers", " laatste") : L("mots", "woorden")}</span></button>`).join("");
+    const btns = NOMBRES.map(n => `<button class="duree" data-a="nombre" data-v="${n}" aria-pressed="${n === nombreChoisi}" ${nombrePossible(n) ? "" : "disabled"}><b>${nombreLabel(n)}</b><span>${n === "tout" ? mots.length + L(" mots", " woorden") : n === "new" ? listeNew().length + (listeNew().length > 1 ? L(" mots", " woorden") : L(" mot", " woord")) : L("mots", "woorden")}</span></button>`).join("");
     const manque = NOMBRES.some(n => !nombrePossible(n));
     return `
       ${barre(retour("versModes"), `<h2>${L("Combien de mots ?", "Hoeveel woorden?")}</h2>`, avatarProfil(profil))}
@@ -1057,7 +1062,7 @@ textarea { min-height: 150px; resize: vertical; }
     if (mode === "normal" && !nombrePossible(nombreChoisi)) nombreChoisi = "tout";
     const nombre = mode === "normal" ? nombreChoisi : null;
     const pile = mode !== "normal" || nombre === "tout" ? melanger(mots)
-      : nombre === "new" ? melanger(mots.slice(-NB_NEW))
+      : nombre === "new" ? melanger(listeNew())
       : melanger(mots).slice(0, nombre);
     partie = {
       mode, duree: mode === "timer" ? dureeChoisie : null, nombre,
@@ -1191,6 +1196,7 @@ textarea { min-height: 150px; resize: vertical; }
     enregistrerListe() {
       if (NL) {
         const perso = nettoyer(document.getElementById("listeManuelle").value.split(/\r?\n/));
+        retenirNouveaux(perso.filter(m => !motsPerso.includes(m) && !motsSheet.includes(m)));
         if (JSON.stringify(perso) !== JSON.stringify(motsPerso)) { motsDate = new Date().toISOString(); ecrire("motsDate", motsDate); }
         motsPerso = perso; ecrire("motsPerso", motsPerso);
         mots = nettoyer([...motsPerso, ...motsSheet]);
