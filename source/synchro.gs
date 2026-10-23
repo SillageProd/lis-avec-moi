@@ -1,39 +1,40 @@
-// Lis avec moi : garde les profils et les résultats des enfants pour les partager
-// entre l'iPad et l'iPhone. À coller dans Extensions > Apps Script d'un Google Sheet.
-const ONGLETS = {
+/* Lis avec moi - synchronisation des profils et des resultats entre l'iPad et l'iPhone. A coller dans Extensions > Apps Script d'un Google Sheet, en remplacant tout le contenu. */
+
+var ONGLETS = {
   Profils: ["id", "nom", "animal", "couleur"],
   Resultats: ["id", "profil", "mode", "duree", "nombre", "justes", "faux", "total", "tempsMs", "date"],
   Supprimes: ["id"]
 };
 
 function feuille(nom) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let f = ss.getSheetByName(nom);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var f = ss.getSheetByName(nom);
   if (!f) {
     f = ss.insertSheet(nom);
-    f.getRange("A:Z").setNumberFormat("@"); // tout en texte, pour garder les valeurs telles quelles
+    f.getRange("A:Z").setNumberFormat("@");
     f.appendRow(ONGLETS[nom]);
   }
   return f;
 }
 
 function lireTout(nom) {
-  const valeurs = feuille(nom).getDataRange().getValues();
-  const titres = valeurs.shift();
-  return valeurs.filter(l => l[0] !== "").map(l => {
-    const o = {};
-    titres.forEach((t, i) => o[t] = l[i]);
-    return o;
-  });
+  var valeurs = feuille(nom).getDataRange().getValues();
+  var titres = valeurs.shift();
+  var liste = [];
+  for (var i = 0; i < valeurs.length; i++) {
+    if (valeurs[i][0] === "") continue;
+    var o = {};
+    for (var j = 0; j < titres.length; j++) o[titres[j]] = valeurs[i][j];
+    liste.push(o);
+  }
+  return liste;
 }
 
 function etat() {
-  return {
-    ok: true,
-    profils: lireTout("Profils"),
-    resultats: lireTout("Resultats"),
-    supprimes: lireTout("Supprimes").map(s => String(s.id))
-  };
+  var sup = lireTout("Supprimes");
+  var ids = [];
+  for (var i = 0; i < sup.length; i++) ids.push(String(sup[i].id));
+  return { ok: true, profils: lireTout("Profils"), resultats: lireTout("Resultats"), supprimes: ids };
 }
 
 function repondre(o) {
@@ -44,25 +45,39 @@ function doGet() {
   return repondre(etat());
 }
 
+function ajouter(nom, liste) {
+  if (!liste || !liste.length) return;
+  var f = feuille(nom);
+  var existants = lireTout(nom);
+  var deja = {};
+  for (var i = 0; i < existants.length; i++) deja[String(existants[i].id)] = true;
+  var colonnes = ONGLETS[nom];
+  var lignes = [];
+  for (var k = 0; k < liste.length; k++) {
+    var o = liste[k];
+    if (deja[String(o.id)]) continue;
+    var ligne = [];
+    for (var c = 0; c < colonnes.length; c++) {
+      var v = o[colonnes[c]];
+      ligne.push(v === null || v === undefined ? "" : String(v));
+    }
+    lignes.push(ligne);
+    deja[String(o.id)] = true;
+  }
+  if (lignes.length) f.getRange(f.getLastRow() + 1, 1, lignes.length, colonnes.length).setValues(lignes);
+}
+
 function doPost(e) {
-  const verrou = LockService.getScriptLock();
+  var verrou = LockService.getScriptLock();
   verrou.waitLock(20000);
   try {
-    const d = JSON.parse(e.postData.contents);
-    const envois = [
-      ["Profils", d.profils || []],
-      ["Resultats", d.resultats || []],
-      ["Supprimes", (d.supprimes || []).map(id => ({ id: id }))]
-    ];
-    envois.forEach(([nom, liste]) => {
-      if (!liste.length) return;
-      const f = feuille(nom);
-      const deja = new Set(lireTout(nom).map(o => String(o.id)));
-      const lignes = liste
-        .filter(o => !deja.has(String(o.id)))
-        .map(o => ONGLETS[nom].map(k => o[k] == null ? "" : String(o[k])));
-      if (lignes.length) f.getRange(f.getLastRow() + 1, 1, lignes.length, lignes[0].length).setValues(lignes);
-    });
+    var d = JSON.parse(e.postData.contents);
+    var sup = [];
+    var ids = d.supprimes || [];
+    for (var i = 0; i < ids.length; i++) sup.push({ id: ids[i] });
+    ajouter("Profils", d.profils);
+    ajouter("Resultats", d.resultats);
+    ajouter("Supprimes", sup);
     return repondre(etat());
   } finally {
     verrou.releaseLock();
