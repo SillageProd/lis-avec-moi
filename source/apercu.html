@@ -207,6 +207,7 @@ input[type="text"], input[type="url"], textarea {
 .puces { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .puce { min-height: 52px; min-width: 76px; border-radius: 16px; background: rgba(255,255,255,.6); font-size: 20px; font-weight: 600; }
 .puce[aria-pressed="true"] { background: var(--orange); color: #fff; }
+.puce small, .onglet small { font-size: .75em; opacity: .75; }
 .graphe { background: var(--papier); border-radius: 30px; box-shadow: var(--ombre); padding: 18px 12px 12px; overflow-x: auto; }
 .graphe svg { display: block; height: auto; }
 .graphe text { font-family: var(--f-titre); }
@@ -286,7 +287,7 @@ textarea { min-height: 150px; resize: vertical; }
   let nombreChoisi = lire("nombre", "tout");
   let partie = null;
   let fin = null;                // résultat affiché à la fin
-  let etatProgres = { mode: "timer", duree: null };
+  let etatProgres = { mode: null, duree: null };
   let porte = null;              // petite question d'accès à l'espace parents
   let statutMots = null;
   let suppressionArmee = null;
@@ -490,9 +491,8 @@ textarea { min-height: 150px; resize: vertical; }
       if (garde[k]) { alias[p.id] = garde[k].id; return false; }
       garde[k] = p; return true;
     });
-    const ids = new Set(ps.map(p => p.id));
     const rs = [...R.values()].map(r => alias[r.profil] ? { ...r, profil: alias[r.profil] } : r)
-      .filter(r => ids.has(r.profil)).sort((a, b) => a.date < b.date ? -1 : 1);
+      .filter(r => !sup.has(r.profil)).sort((a, b) => a.date < b.date ? -1 : 1);
     return { ps, rs, alias };
   }
   async function appelSynchro(corps) {
@@ -687,15 +687,17 @@ textarea { min-height: 150px; resize: vertical; }
 
   function vueProgres() {
     const v = etatProgres;
-    const tousTimer = resultatsDe(profil.id, "timer");
-    if (v.duree == null) {
-      const compte = {}; tousTimer.forEach(r => compte[r.duree] = (compte[r.duree] || 0) + 1);
-      v.duree = Number(Object.keys(compte).sort((a, b) => compte[b] - compte[a])[0]) || dureeChoisie;
-    }
+    // Par défaut on montre le mode, la durée et le nombre de mots de la dernière partie jouée
+    const tous = resultats.filter(r => r.profil === profil.id);
+    const dernier = tous[tous.length - 1];
+    const dernierDe = mode => { const l = tous.filter(r => r.mode === mode); return l[l.length - 1]; };
+    if (v.mode == null) v.mode = dernier ? dernier.mode : "timer";
+    if (v.duree == null) v.duree = dernierDe("timer") ? dernierDe("timer").duree : dureeChoisie;
+    const avecNombre = (label, n) => n ? `${label} <small>(${n})</small>` : label;
     let contenu = "";
     if (v.mode === "timer") {
-      const liste = resultatsDe(profil.id, "timer", v.duree).slice(-12);
-      const puces = DUREES.map(n => `<button class="puce" data-a="progresDuree" data-v="${n}" aria-pressed="${n === v.duree}">${dureeCourte(n)}</button>`).join("");
+      const liste = resultatsDe(profil.id, "timer", v.duree);
+      const puces = DUREES.map(n => `<button class="puce" data-a="progresDuree" data-v="${n}" aria-pressed="${n === v.duree}">${avecNombre(dureeCourte(n), resultatsDe(profil.id, "timer", n).length)}</button>`).join("");
       const meilleur = liste.reduce((m, r) => Math.max(m, r.justes), 0);
       let rec = -1;
       const points = liste.map(r => { const p = { valeur: r.justes, etiquette: r.justes, date: dateCourte(r.date), record: r.justes > rec && r.justes === meilleur }; if (p.record) rec = r.justes; return p; });
@@ -704,13 +706,9 @@ textarea { min-height: 150px; resize: vertical; }
            <div class="graphe">${grapheBarres(points, { max: 5, titre: "Mots justes en " + minutes(v.duree) })}</div>`
         : `<div class="graphe"><div class="vide"><span class="ico">⏱️</span>Pas encore de partie en ${minutes(v.duree)}.<br>Lance un Timer pour voir ton score ici !</div></div>`);
     } else {
-      if (v.nombre == null) {
-        const compte = {}; resultatsDe(profil.id, "normal").forEach(r => { const k = varianteDe(r); compte[k] = (compte[k] || 0) + 1; });
-        const k = Object.keys(compte).sort((a, b) => compte[b] - compte[a])[0];
-        v.nombre = k == null ? nombreChoisi : nombreLire(k);
-      }
-      const pucesN = NOMBRES.map(n => `<button class="puce normal" data-a="progresNombre" data-v="${n}" aria-pressed="${n === v.nombre}">${nombreLabel(n)}</button>`).join("");
-      const liste = resultatsDe(profil.id, "normal", v.nombre).slice(-12);
+      if (v.nombre == null) v.nombre = dernierDe("normal") ? varianteDe(dernierDe("normal")) : nombreChoisi;
+      const pucesN = NOMBRES.map(n => `<button class="puce normal" data-a="progresNombre" data-v="${n}" aria-pressed="${n === v.nombre}">${avecNombre(nombreLabel(n), resultatsDe(profil.id, "normal", n).length)}</button>`).join("");
+      const liste = resultatsDe(profil.id, "normal", v.nombre);
       const meilleur = liste.reduce((m, r) => Math.max(m, Math.round(taux(r) * 100)), 0);
       let rec = -1;
       const points = liste.map(r => { const pc = Math.round(taux(r) * 100); const p = { valeur: pc, etiquette: pc + "%", date: dateCourte(r.date), sous: "⏱ " + mmss(r.tempsMs), record: pc > rec && pc === meilleur }; if (p.record) rec = pc; return p; });
@@ -724,8 +722,8 @@ textarea { min-height: 150px; resize: vertical; }
       ${barre(retour("versModes"), `<h2>Les progrès de ${esc(profil.nom)}</h2>`, avatarProfil(profil))}
       <div class="parents" style="padding-top:12px">
         <div class="onglets">
-          <button class="onglet timer" data-a="progresMode" data-v="timer" aria-pressed="${v.mode === "timer"}">⏱️ Timer</button>
-          <button class="onglet normal" data-a="progresMode" data-v="normal" aria-pressed="${v.mode === "normal"}">📖 Normal</button>
+          <button class="onglet timer" data-a="progresMode" data-v="timer" aria-pressed="${v.mode === "timer"}">⏱️ ${avecNombre("Timer", resultatsDe(profil.id, "timer").length)}</button>
+          <button class="onglet normal" data-a="progresMode" data-v="normal" aria-pressed="${v.mode === "normal"}">📖 ${avecNombre("Normal", resultatsDe(profil.id, "normal").length)}</button>
         </div>
         ${contenu}
       </div>`;
@@ -826,6 +824,7 @@ textarea { min-height: 150px; resize: vertical; }
     const vues = { profils: vueProfils, nouveau: vueNouveauProfil, modes: vueModes, timer: vueTimer, normal: vueNormal, jeu: vueJeu, fin: vueFin, progres: vueProgres, porte: vuePorte, parents: vueParents };
     app.innerHTML = vues[ecran]();
     if (ecran === "jeu") montrerMot();
+    if (ecran === "progres") { const g = app.querySelector(".graphe"); if (g) g.scrollLeft = g.scrollWidth; }
     if (ecran === "nouveau") {
       const champ = document.getElementById("nomProfil");
       const maj = () => { brouillon.nom = champ.value; document.getElementById("btnCreer").disabled = !champ.value.trim(); };
@@ -929,7 +928,7 @@ textarea { min-height: 150px; resize: vertical; }
   // ---------- actions ----------
   const actions = {
     versProfils() { profil = null; statutMots = null; suppressionArmee = null; aller("profils"); synchroniser(); },
-    choisirProfil(el) { profil = profils.find(p => p.id === el.dataset.id); etatProgres = { mode: "timer", duree: null }; aller("modes"); },
+    choisirProfil(el) { profil = profils.find(p => p.id === el.dataset.id); etatProgres = { mode: null, duree: null }; aller("modes"); },
     nouveauProfil() {
       const pris = profils.map(p => p.animal);
       brouillon = { nom: "", animal: ANIMAUX.find(a => !pris.includes(a)) || ANIMAUX[0], couleur: COULEURS[profils.length % COULEURS.length] };
@@ -952,7 +951,7 @@ textarea { min-height: 150px; resize: vertical; }
     lancerNormal() { demarrer("normal"); },
     repondre(el) { repondre(el.dataset.v === "1"); },
     arreter,
-    versProgres() { etatProgres = { mode: "timer", duree: null }; aller("progres"); },
+    versProgres() { etatProgres = { mode: null, duree: null }; aller("progres"); },
     progresMode(el) { etatProgres.mode = el.dataset.v; afficher(); },
     progresNombre(el) { etatProgres.nombre = nombreLire(el.dataset.v); afficher(); },
     progresDuree(el) { etatProgres.duree = Number(el.dataset.v); afficher(); },
