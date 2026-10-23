@@ -183,6 +183,8 @@ input[type="text"], input[type="url"], textarea {
 /* fin de partie */
 .fin { flex: 1; display: grid; align-content: center; justify-items: center; gap: 22px; text-align: center; }
 .medaille { font-size: 96px; line-height: 1; }
+.bravo { font-size: clamp(44px, 10vw, 84px); color: var(--orange); text-shadow: 0 4px 0 rgba(36,48,87,.15); overflow-wrap: anywhere; animation: bravo .7s cubic-bezier(.3,1.6,.5,1) both; }
+@keyframes bravo { from { transform: scale(.3) rotate(-8deg); opacity: 0; } to { transform: scale(1) rotate(-2deg); opacity: 1; } }
 .score-grand { font-size: clamp(80px, 18vw, 150px); font-weight: 700; line-height: .9; color: var(--vrai); font-variant-numeric: tabular-nums; }
 .score-legende { font-size: clamp(22px, 4vw, 32px); font-weight: 600; }
 .cases { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
@@ -270,6 +272,9 @@ textarea { min-height: 150px; resize: vertical; }
   let source = lire("source", { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null });
   let lienSheet = lire("lienSheet", LIEN_SHEET_ECOLE);
   let sonActif = lire("son", true);
+  let lienSynchro = lire("lienSynchro", "");
+  let supprimes = lire("supprimes", []);           // profils supprimés, à transmettre aux autres appareils
+  let etatSynchro = lire("etatSynchro", null);     // { ok, date, texte }
   if (!Array.isArray(mots) || !mots.length) { mots = nettoyer(MOTS_EXEMPLE); source = { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null }; }
 
   const app = document.getElementById("app");
@@ -321,6 +326,17 @@ textarea { min-height: 150px; resize: vertical; }
         g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
         o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.18);
       });
+    } catch (e) {}
+  }
+
+  // « Bravo » dit à voix haute, si les sons sont activés
+  function direBravo(nom) {
+    if (!sonActif || !window.speechSynthesis) return;
+    try {
+      const u = new SpeechSynthesisUtterance("Bravo " + nom + " !");
+      u.lang = "fr-FR"; u.rate = .95; u.pitch = 1.2;
+      const voix = speechSynthesis.getVoices().find(v => /^fr/i.test(v.lang)); if (voix) u.voice = voix;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
     } catch (e) {}
   }
 
@@ -451,6 +467,67 @@ textarea { min-height: 150px; resize: vertical; }
   const resultatsDe = (pid, mode, variante) => resultats.filter(r => r.profil === pid && r.mode === mode && (variante == null || varianteDe(r) === variante));
   const taux = r => r.total ? r.justes / r.total : 0;
 
+  // ---------- synchronisation entre appareils (Google Apps Script) ----------
+  const CODE_SYNCHRO = "// Lis avec moi : garde les profils et les résultats des enfants pour les partager\n// entre l'iPad et l'iPhone. À coller dans Extensions > Apps Script d'un Google Sheet.\nconst ONGLETS = {\n  Profils: [\"id\", \"nom\", \"animal\", \"couleur\"],\n  Resultats: [\"id\", \"profil\", \"mode\", \"duree\", \"nombre\", \"justes\", \"faux\", \"total\", \"tempsMs\", \"date\"],\n  Supprimes: [\"id\"]\n};\n\nfunction feuille(nom) {\n  const ss = SpreadsheetApp.getActiveSpreadsheet();\n  let f = ss.getSheetByName(nom);\n  if (!f) {\n    f = ss.insertSheet(nom);\n    f.getRange(\"A:Z\").setNumberFormat(\"@\"); // tout en texte, pour garder les valeurs telles quelles\n    f.appendRow(ONGLETS[nom]);\n  }\n  return f;\n}\n\nfunction lireTout(nom) {\n  const valeurs = feuille(nom).getDataRange().getValues();\n  const titres = valeurs.shift();\n  return valeurs.filter(l => l[0] !== \"\").map(l => {\n    const o = {};\n    titres.forEach((t, i) => o[t] = l[i]);\n    return o;\n  });\n}\n\nfunction etat() {\n  return {\n    ok: true,\n    profils: lireTout(\"Profils\"),\n    resultats: lireTout(\"Resultats\"),\n    supprimes: lireTout(\"Supprimes\").map(s => String(s.id))\n  };\n}\n\nfunction repondre(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doGet() {\n  return repondre(etat());\n}\n\nfunction doPost(e) {\n  const verrou = LockService.getScriptLock();\n  verrou.waitLock(20000);\n  try {\n    const d = JSON.parse(e.postData.contents);\n    const envois = [\n      [\"Profils\", d.profils || []],\n      [\"Resultats\", d.resultats || []],\n      [\"Supprimes\", (d.supprimes || []).map(id => ({ id: id }))]\n    ];\n    envois.forEach(([nom, liste]) => {\n      if (!liste.length) return;\n      const f = feuille(nom);\n      const deja = new Set(lireTout(nom).map(o => String(o.id)));\n      const lignes = liste\n        .filter(o => !deja.has(String(o.id)))\n        .map(o => ONGLETS[nom].map(k => o[k] == null ? \"\" : String(o[k])));\n      if (lignes.length) f.getRange(f.getLastRow() + 1, 1, lignes.length, lignes[0].length).setValues(lignes);\n    });\n    return repondre(etat());\n  } finally {\n    verrou.releaseLock();\n  }\n}\n";
+  const normProfil = o => ({ id: String(o.id), nom: String(o.nom), animal: String(o.animal), couleur: String(o.couleur) });
+  const vide = v => v === "" || v == null;
+  const normResultat = o => ({
+    id: String(o.id), profil: String(o.profil), mode: String(o.mode),
+    duree: vide(o.duree) ? null : Number(o.duree), nombre: vide(o.nombre) ? null : nombreLire(String(o.nombre)),
+    justes: Number(o.justes) || 0, faux: Number(o.faux) || 0, total: Number(o.total) || 0, tempsMs: Number(o.tempsMs) || 0,
+    date: o.date instanceof Date ? o.date.toISOString() : String(o.date)
+  });
+  function fusionner(srv) {
+    const sup = new Set([...supprimes, ...srv.supprimes.map(String)]);
+    const P = new Map(), R = new Map();
+    [...srv.profils.map(normProfil), ...profils].forEach(p => { if (!P.has(p.id)) P.set(p.id, p); });
+    [...srv.resultats.map(normResultat), ...resultats].forEach(r => { if (!R.has(r.id)) R.set(r.id, r); });
+    // Même prénom créé sur deux appareils : on garde le profil le plus ancien et on regroupe les résultats
+    const alias = {}, garde = {};
+    const ps = [...P.values()].filter(p => !sup.has(p.id)).sort((a, b) => a.id < b.id ? -1 : 1).filter(p => {
+      const k = p.nom.trim().toLowerCase();
+      if (garde[k]) { alias[p.id] = garde[k].id; return false; }
+      garde[k] = p; return true;
+    });
+    const ids = new Set(ps.map(p => p.id));
+    const rs = [...R.values()].map(r => alias[r.profil] ? { ...r, profil: alias[r.profil] } : r)
+      .filter(r => ids.has(r.profil)).sort((a, b) => a.date < b.date ? -1 : 1);
+    return { ps, rs, alias };
+  }
+  async function appelSynchro(corps) {
+    const rep = corps
+      ? await fetch(lienSynchro, { method: "POST", body: JSON.stringify(corps), redirect: "follow" })
+      : await fetch(lienSynchro + "?t=" + Date.now(), { cache: "no-store", redirect: "follow" });
+    const d = await rep.json();
+    if (!d || !d.ok) throw new Error("réponse");
+    return d;
+  }
+  let synchroEnCours = false, synchroRelance = false;
+  async function synchroniser() {
+    if (!lienSynchro) return;
+    if (synchroEnCours) { synchroRelance = true; return; }
+    synchroEnCours = true;
+    try {
+      let srv = await appelSynchro();
+      const ids = l => new Set(l.map(x => String(x.id)));
+      const sp = ids(srv.profils), sr = ids(srv.resultats), ss = new Set(srv.supprimes.map(String));
+      const envoi = { profils: profils.filter(p => !sp.has(p.id)), resultats: resultats.filter(r => !sr.has(r.id)), supprimes: supprimes.filter(id => !ss.has(id)) };
+      if (envoi.profils.length || envoi.resultats.length || envoi.supprimes.length) srv = await appelSynchro(envoi);
+      const { ps, rs, alias } = fusionner(srv);
+      profils = ps; resultats = rs; sauverProfils(); sauverResultats();
+      if (profil) profil = profils.find(p => p.id === (alias[profil.id] || profil.id)) || null;
+      etatSynchro = { ok: true, date: new Date().toISOString(), texte: "" };
+    } catch (e) {
+      etatSynchro = { ok: false, date: etatSynchro && etatSynchro.date, texte: "Synchronisation impossible pour l'instant. Les résultats sont gardés sur cet appareil et seront envoyés plus tard." };
+    } finally {
+      ecrire("etatSynchro", etatSynchro);
+      synchroEnCours = false;
+      if (!profil && !["profils", "parents", "porte", "nouveau"].includes(ecran)) aller("profils");
+      else if (["profils", "parents", "progres", "modes"].includes(ecran)) afficher();
+      if (synchroRelance) { synchroRelance = false; synchroniser(); }
+    }
+  }
+
   // ---------- écrans ----------
   function barre(gauche, titre, droite) {
     return `<div class="barre">${gauche || '<span class="espace"></span>'}<div class="titre">${titre || ""}</div>${droite || '<span class="espace"></span>'}</div>`;
@@ -545,12 +622,13 @@ textarea { min-height: 150px; resize: vertical; }
     let medaille = "⭐", message = "", classe = "";
     if (r.mode === "timer") {
       if (!prec) message = `C'est ton premier score en ${minutes(r.duree)} !`;
-      else if (r.justes > prec.justes) { message = `Bravo, tu as fait mieux que la dernière fois (${prec.justes}) !`; classe = "mieux"; medaille = "🏆"; }
+      else if (r.justes > prec.justes) { message = `Tu as fait mieux que la dernière fois (${prec.justes}) !`; classe = "mieux"; medaille = "🏆"; }
       else if (r.justes === prec.justes) message = `Pareil que la dernière fois (${prec.justes}). Bien joué !`;
       else message = `La dernière fois, tu en avais ${prec.justes}. Tu vas y arriver !`;
       return `
         <div class="fin">
           <div class="medaille">${medaille}</div>
+          <h1 class="bravo">Bravo ${esc(profil.nom)} !</h1>
           ${fin.record ? '<span class="badge">Nouveau record !</span>' : ""}
           <div class="score-grand">${r.justes}</div>
           <div class="score-legende">mot${r.justes > 1 ? "s" : ""} juste${r.justes > 1 ? "s" : ""} en ${minutes(r.duree)}</div>
@@ -565,14 +643,14 @@ textarea { min-height: 150px; resize: vertical; }
       const plusRapide = r.tempsMs < prec.tempsMs - 1000, plusLent = r.tempsMs > prec.tempsMs + 1000;
       if (mieuxJuste) morceaux.push("plus de bonnes réponses");
       if (plusRapide) morceaux.push("plus rapide de " + tempsEnMots(prec.tempsMs - r.tempsMs));
-      if (mieuxJuste || (!pireJuste && plusRapide)) { message = "Bravo, tu as fait mieux que la dernière fois : " + morceaux.join(" et ") + " !"; classe = "mieux"; medaille = "🏆"; }
+      if (mieuxJuste || (!pireJuste && plusRapide)) { message = "Tu as fait mieux que la dernière fois : " + morceaux.join(" et ") + " !"; classe = "mieux"; medaille = "🏆"; }
       else if (!pireJuste && !plusLent) message = "Aussi bien que la dernière fois. Bien joué !";
       else message = `La dernière fois : ${prec.justes} juste${prec.justes > 1 ? "s" : ""} sur ${prec.total} en ${tempsEnMots(prec.tempsMs)}. Continue, tu progresses !`;
     }
     return `
       <div class="fin">
         <div class="medaille">${medaille}</div>
-        <h1>C'est fini !</h1>
+        <h1 class="bravo">Bravo ${esc(profil.nom)} !</h1>
         <div class="cases">
           <div class="case v"><b>${r.justes}</b><span>juste${r.justes > 1 ? "s" : ""} ✓</span></div>
           <div class="case x"><b>${r.faux}</b><span>faux ✗</span></div>
@@ -712,6 +790,29 @@ textarea { min-height: 150px; resize: vertical; }
         </section>
 
         <section class="panneau">
+          <h3>Synchroniser l'iPad et l'iPhone</h3>
+          ${lienSynchro ? `
+            <p class="statut ${etatSynchro && !etatSynchro.ok ? "ko" : "ok"}">${etatSynchro && !etatSynchro.ok ? esc(etatSynchro.texte) : etatSynchro && etatSynchro.date ? "✓ Synchronisé le " + new Date(etatSynchro.date).toLocaleDateString("fr-BE") + " à " + new Date(etatSynchro.date).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }) : "Connexion…"}</p>
+            <p class="aide">Les profils et les résultats sont partagés avec tous les appareils connectés au même lien.</p>
+            <div class="ligne"><button class="gros bleu petit" data-a="synchroMaintenant">🔄 Synchroniser maintenant</button><button class="btn-danger" data-a="deconnecterSynchro">Déconnecter</button></div>`
+          : `
+            <p class="aide">Pour retrouver les mêmes profils et progrès sur tous vos appareils (5 minutes, une seule fois, de préférence sur un ordinateur) :</p>
+            <ol class="aide">
+              <li>Créez un nouveau Google Sheet, par exemple « Lis avec moi – résultats ».</li>
+              <li>Menu <b>Extensions → Apps Script</b>. Effacez le contenu et collez le code ci-dessous.</li>
+              <li><b>Déployer → Nouveau déploiement</b>, type <b>Application Web</b>. « Exécuter en tant que » : <b>Moi</b>, « Qui a accès » : <b>Tout le monde</b>. Cliquez sur Déployer et autorisez l'accès.</li>
+              <li>Copiez l'<b>URL de l'application Web</b> (elle finit par /exec) et collez-la ici, sur chaque appareil.</li>
+            </ol>
+            <div class="ligne"><button class="gros blanc petit" data-a="copierCode">📋 Copier le code</button></div>
+            <textarea id="codeSynchro" readonly hidden>${esc(CODE_SYNCHRO)}</textarea>
+            <div class="ligne">
+              <input id="lienSynchro" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+              <button class="gros bleu petit" data-a="connecterSynchro">Connecter</button>
+            </div>
+            ${etatSynchro && !etatSynchro.ok ? `<p class="statut ko">${esc(etatSynchro.texte)}</p>` : ""}`}
+        </section>
+
+        <section class="panneau">
           <h3>Sons</h3>
           <div class="ligne"><button class="gros petit ${sonActif ? "vert" : "blanc"}" data-a="son">${sonActif ? "🔊 Sons activés" : "🔇 Sons coupés"}</button></div>
         </section>
@@ -801,15 +902,16 @@ textarea { min-height: 150px; resize: vertical; }
     clearInterval(partie.minuteur); lacherEcran();
     const p = partie; partie = null;
     const tempsMs = p.mode === "timer" ? p.duree * 60000 : Date.now() - p.debut;
-    const r = { id: Date.now().toString(36), profil: profil.id, mode: p.mode, duree: p.duree, nombre: p.nombre, justes: p.justes, faux: p.faux, total: p.justes + p.faux, tempsMs, date: new Date().toISOString() };
+    const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), profil: profil.id, mode: p.mode, duree: p.duree, nombre: p.nombre, justes: p.justes, faux: p.faux, total: p.justes + p.faux, tempsMs, date: new Date().toISOString() };
     const anciens = resultatsDe(profil.id, p.mode, p.mode === "timer" ? p.duree : p.nombre);
     const precedent = anciens[anciens.length - 1] || null;
     const record = p.mode === "timer" && anciens.length > 0 && r.justes > Math.max(...anciens.map(a => a.justes));
-    resultats.push(r); sauverResultats();
+    resultats.push(r); sauverResultats(); synchroniser();
     fin = { resultat: r, precedent, record };
     aller("fin");
     const mieux = precedent && (p.mode === "timer" ? r.justes > precedent.justes : (taux(r) > taux(precedent) || (taux(r) === taux(precedent) && r.tempsMs < precedent.tempsMs - 1000)));
     if (!precedent || mieux || record) { bip("fete"); feuArtifice(); }
+    setTimeout(() => direBravo(profil.nom), 500);
   }
   function arreter() {
     if (!partie) return;
@@ -824,7 +926,7 @@ textarea { min-height: 150px; resize: vertical; }
 
   // ---------- actions ----------
   const actions = {
-    versProfils() { profil = null; statutMots = null; suppressionArmee = null; aller("profils"); },
+    versProfils() { profil = null; statutMots = null; suppressionArmee = null; aller("profils"); synchroniser(); },
     choisirProfil(el) { profil = profils.find(p => p.id === el.dataset.id); etatProgres = { mode: "timer", duree: null }; aller("modes"); },
     nouveauProfil() {
       const pris = profils.map(p => p.animal);
@@ -836,8 +938,8 @@ textarea { min-height: 150px; resize: vertical; }
     couleur(el) { brouillon.couleur = el.dataset.v; afficher(); },
     creerProfil() {
       const nom = brouillon.nom.trim(); if (!nom || profils.length >= MAX_PROFILS) return;
-      profil = { id: "p" + Date.now().toString(36), nom, animal: brouillon.animal, couleur: brouillon.couleur };
-      profils.push(profil); sauverProfils(); bip("ok"); aller("modes");
+      profil = { id: "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), nom, animal: brouillon.animal, couleur: brouillon.couleur };
+      profils.push(profil); sauverProfils(); bip("ok"); aller("modes"); synchroniser();
     },
     versModes() { aller("modes"); },
     versTimer() { aller("timer"); },
@@ -874,7 +976,24 @@ textarea { min-height: 150px; resize: vertical; }
       const id = el.dataset.id;
       if (suppressionArmee !== id) { suppressionArmee = id; return afficher(); }
       profils = profils.filter(p => p.id !== id); resultats = resultats.filter(r => r.profil !== id);
-      sauverProfils(); sauverResultats(); suppressionArmee = null; afficher();
+      if (lienSynchro && !supprimes.includes(id)) { supprimes.push(id); ecrire("supprimes", supprimes); }
+      sauverProfils(); sauverResultats(); suppressionArmee = null; afficher(); synchroniser();
+    },
+    async connecterSynchro() {
+      const lien = document.getElementById("lienSynchro").value.trim();
+      if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(lien)) {
+        etatSynchro = { ok: false, date: null, texte: "Ce lien ne ressemble pas à un lien d'application Web Google (il doit finir par /exec)." };
+        return afficher();
+      }
+      lienSynchro = lien; ecrire("lienSynchro", lienSynchro);
+      etatSynchro = { ok: true, date: null, texte: "Connexion…" }; afficher();
+      await synchroniser();
+    },
+    synchroMaintenant() { synchroniser(); },
+    deconnecterSynchro() { lienSynchro = ""; ecrire("lienSynchro", ""); etatSynchro = null; ecrire("etatSynchro", null); afficher(); },
+    async copierCode(el) {
+      try { await navigator.clipboard.writeText(CODE_SYNCHRO); el.textContent = "✓ Code copié"; }
+      catch (e) { const t = document.getElementById("codeSynchro"); t.hidden = false; t.select(); el.textContent = "Sélectionnez et copiez le code ci-dessous"; }
     },
     son() { sonActif = !sonActif; ecrire("son", sonActif); afficher(); }
   };
@@ -890,10 +1009,14 @@ textarea { min-height: 150px; resize: vertical; }
     if (e.key === "x" || e.key === "X" || e.key === "ArrowRight") repondre(false);
   });
   addEventListener("resize", () => { if (ecran === "jeu") { const el = document.getElementById("mot"); if (el && partie) el.style.fontSize = ""; montrerMot(); } });
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && partie) garderEcranAllume(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (partie) garderEcranAllume(); else synchroniser();
+  });
 
   afficher();
   // Mise à jour automatique de la liste depuis le Google Sheet à l'ouverture
+  synchroniser();
   if (lienSheet) chargerSheet(lienSheet, true).then(ok => { if (ok && (ecran === "parents" || ecran === "modes")) afficher(); });
 })();
 </script>

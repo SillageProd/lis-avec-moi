@@ -18,3 +18,10 @@ Le lien se change dans **Espace parents**.
 
 - `index.html`, `sw.js`, `manifest.webmanifest`, `icone-*.png` : l'app en ligne (GitHub Pages).
 - `source/` : la version de travail et le script `build.py` qui produit les fichiers ci-dessus.
+
+## Synchroniser l'iPad et l'iPhone
+
+Les profils et les résultats peuvent être partagés entre appareils grâce à un petit script Google
+(`source/synchro.gs`, aussi disponible sur le site : `synchro.gs.txt`) installé dans un Google Sheet
+privé. Les étapes sont expliquées dans **Espace parents → Synchroniser l'iPad et l'iPhone**.
+Si le même prénom a été créé sur deux appareils, les deux profils sont regroupés automatiquement.
