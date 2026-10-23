@@ -321,17 +321,28 @@ textarea { min-height: 150px; resize: vertical; }
 (() => {
   "use strict";
 
+  // ---------- édition ----------
+  // « famille » = version de Robin (FR, Google Sheet réglable, synchronisation)
+  // « partage » = version néerlandaise pour les autres parents (produite par build.py)
+  const EDITION = "famille";
+  const NL = EDITION === "partage";
+  const L = (fr, nl) => NL ? nl : fr;   // texte selon la langue de l'édition
+  const LOCALE = L("fr-BE", "nl-BE");
+
   // ---------- stockage ----------
-  const PREFIXE = "lam_";
+  const PREFIXE = L("lam_", "lmm_");
   const lire = (cle, defaut) => { try { const v = localStorage.getItem(PREFIXE + cle); return v ? JSON.parse(v) : defaut; } catch (e) { return defaut; } };
   const ecrire = (cle, val) => { try { localStorage.setItem(PREFIXE + cle, JSON.stringify(val)); } catch (e) {} };
 
   // Copie du Google Sheet de l'école (23/10/2026), utilisée tant que le Sheet ne peut pas être relu
   const LIEN_SHEET_ECOLE = "https://docs.google.com/spreadsheets/d/1EfFFQNCYZ1uqT7OIEDxHxz28Mjmj7JtSmtxUtvzAKz8/edit?usp=sharing";
   const MOTS_EXEMPLE = ["puin", "nek", "g", "look", "toog", "lijm", "taak", "kam", "o", "sok", "nijp", "op", "luis", "sis", "ak", "t", "ui", "muil", "teek", "aak", "kijk", "l", "ap", "eek", "kil", "nijl", "es", "laat", "ip", "kan", "al", "kip", "tom", "is", "ijs", "k", "aal", "kaap", "eek", "kuip", "pijn", "paal", "tem", "tik", "an", "lijs", "kik", "los", "lel", "lijn", "kuit", "keel", "tuin", "lijk", "pijl", "ken", "laan", "e", "lis", "in", "ton", "is", "ep", "een", "eep", "p", "ak", "lip", "kook", "i", "kak", "oom", "aan", "a", "tuil", "teen", "n", "ik", "el", "som", "mom", "neen", "ees", "en", "ne", "ijs", "oo", "kin", "lal", "pan", "nis", "et", "keet", "luik", "noot", "koos", "nog", "maag", "laag", "loog"];
+  // Google Sheet de l'édition partage : lu à chaque ouverture, jamais affiché aux parents
+  const LIEN_SHEET_NL = "https://docs.google.com/spreadsheets/d/19cii5nTabOcyWgeUhJvvH9-MLbabeBO_ou6ezb8cfJw/edit";
+  const MOTS_EXEMPLE_NL = ["a", "e", "i", "o", "u", "m", "p", "k", "r", "s", "ik", "en", "op", "vis", "kam", "sok", "pen", "maan", "roos", "boom"];
   const MAX_PROFILS = 6;
   // Numéro de version (MAJEUR.MINEUR.CORRECTIF) : à augmenter à chaque mise en ligne
-  const VERSION = "1.5.2";
+  const VERSION = "1.6.0";
   let versionEnLigne = null;   // version publiée sur le site, lue dans version.json
   const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
   const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
@@ -340,12 +351,19 @@ textarea { min-height: 150px; resize: vertical; }
   let resultats = lire("resultats", []);
   let mots = lire("mots", null);
   let source = lire("source", { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null });
-  let lienSheet = lire("lienSheet", LIEN_SHEET_ECOLE);
+  let lienSheet = NL ? LIEN_SHEET_NL : lire("lienSheet", LIEN_SHEET_ECOLE);
   let sonActif = lire("son", true);
-  let lienSynchro = lire("lienSynchro", "");
+  let lienSynchro = NL ? "" : lire("lienSynchro", "");
   let supprimes = lire("supprimes", []);           // profils supprimés, à transmettre aux autres appareils
   let etatSynchro = lire("etatSynchro", null);     // { ok, date, texte }
   if (!Array.isArray(mots) || !mots.length) { mots = nettoyer(MOTS_EXEMPLE); source = { type: "exemple", libelle: "Liste de l'école (copie du 23/10)", maj: null }; }
+  // Édition partage : liste du Sheet + mots ajoutés par les parents (gardés à part, jamais écrasés)
+  let motsSheet = lire("motsSheet", null);
+  let motsPerso = lire("motsPerso", []);
+  if (NL) {
+    if (!Array.isArray(motsSheet) || !motsSheet.length) motsSheet = nettoyer(MOTS_EXEMPLE_NL);
+    mots = nettoyer([...motsPerso, ...motsSheet]);
+  }
 
   const app = document.getElementById("app");
   let ecran = "profils";
@@ -366,18 +384,18 @@ textarea { min-height: 150px; resize: vertical; }
   const mmss = ms => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   const tempsEnMots = ms => {
     const s = Math.max(0, Math.round(ms / 1000)), m = Math.floor(s / 60), r = s % 60;
-    if (!m) return r + " seconde" + (r > 1 ? "s" : "");
+    if (!m) return r + L(" seconde" + (r > 1 ? "s" : ""), r === 1 ? " seconde" : " seconden");
     return m + " min" + (r ? " " + String(r).padStart(2, "0") + " s" : "");
   };
   const dateCourte = iso => { const d = new Date(iso); return String(d.getDate()).padStart(2, "0") + "/" + String(d.getMonth() + 1).padStart(2, "0"); };
   const DUREES = [0.5, 1, 2, 3, 4, 5];
-  const minutes = n => n < 1 ? Math.round(n * 60) + " secondes" : n + " minute" + (n > 1 ? "s" : "");
+  const minutes = n => n < 1 ? Math.round(n * 60) + L(" secondes", " seconden") : n + L(" minute" + (n > 1 ? "s" : ""), n === 1 ? " minuut" : " minuten");
   const dureeCourte = n => n < 1 ? Math.round(n * 60) + " s" : n + " min";
   // « new » = les 25 dernières lignes de la liste (les mots ajoutés le plus récemment)
   const NB_NEW = 25;
   const NOMBRES = ["new", 25, 50, 75, 100, "tout"];
-  const nombreTexte = n => n === "tout" ? "tous les mots" : n === "new" ? "les nouveaux mots" : n + " mots";
-  const nombreLabel = n => n === "tout" ? "Tout" : n === "new" ? "New" : n;
+  const nombreTexte = n => n === "tout" ? L("tous les mots", "alle woorden") : n === "new" ? L("les nouveaux mots", "de nieuwe woorden") : n + L(" mots", " woorden");
+  const nombreLabel = n => n === "tout" ? L("Tout", "Alles") : n === "new" ? L("New", "Nieuw") : n;
   const nombreLire = v => v === "tout" || v === "new" ? v : Number(v);
   const nombrePossible = n => n === "tout" || n === "new" || n <= mots.length;
   const sauverProfils = () => ecrire("profils", profils);
@@ -421,8 +439,8 @@ textarea { min-height: 150px; resize: vertical; }
     if (!sonActif || !window.speechSynthesis) return;
     try {
       const u = new SpeechSynthesisUtterance(texte);
-      u.lang = "fr-FR"; u.rate = .95; u.pitch = 1.2;
-      const voix = speechSynthesis.getVoices().find(v => /^fr/i.test(v.lang)); if (voix) u.voice = voix;
+      u.lang = L("fr-FR", "nl-BE"); u.rate = .95; u.pitch = 1.2;
+      const voix = speechSynthesis.getVoices().find(v => v.lang === u.lang) || speechSynthesis.getVoices().find(v => v.lang.slice(0, 2) === u.lang.slice(0, 2)); if (voix) u.voice = voix;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     } catch (e) {}
   }
@@ -496,7 +514,7 @@ textarea { min-height: 150px; resize: vertical; }
         <div class="fete-extra"><span class="fete-grand" data-cible="${o.valeur}" data-suffixe="${o.suffixe || ""}">0${o.suffixe || ""}</span><span class="fete-legende">${esc(o.legende)}</span></div>
         ${o.delta ? `<div class="fete-delta">${esc(o.delta)}</div>` : ""}
         <p class="fete-sous">${esc(o.sous)}</p>
-        <p class="fete-touche">Touche l'écran pour continuer</p>
+        <p class="fete-touche">${L("Touche l'écran pour continuer", "Tik op het scherm om verder te gaan")}</p>
       </div>`;
     document.body.appendChild(f);
     // le score monte de 0 à sa valeur
@@ -521,7 +539,7 @@ textarea { min-height: 150px; resize: vertical; }
   // Doublons : on garde la dernière ligne, pour que « New » reprenne bien les 25 dernières lignes du Sheet
   function nettoyer(liste) {
     const propres = liste.map(m => String(m == null ? "" : m).trim());
-    if (propres.length && ["mot", "mots", "lettre", "lettres", "mots/lettres", "lettres/mots", "liste"].includes(propres[0].toLowerCase())) propres.shift();
+    if (propres.length && ["mot", "mots", "lettre", "lettres", "mots/lettres", "lettres/mots", "liste", "woord", "woorden", "letters"].includes(propres[0].toLowerCase())) propres.shift();
     const out = [], vus = new Set();
     for (let i = propres.length - 1; i >= 0; i--) {
       const v = propres[i];
@@ -544,6 +562,11 @@ textarea { min-height: 150px; resize: vertical; }
   function appliquerMots(liste, src) {
     const propre = nettoyer(liste);
     if (!propre.length) return false;
+    if (NL) {
+      motsSheet = propre; ecrire("motsSheet", motsSheet);
+      mots = nettoyer([...motsPerso, ...motsSheet]); source = src; ecrire("source", source);
+      return true;
+    }
     mots = propre; source = src;
     ecrire("mots", mots); ecrire("source", source);
     return true;
@@ -556,11 +579,11 @@ textarea { min-height: 150px; resize: vertical; }
       if (!rep.ok) throw new Error(rep.status);
       const texte = await rep.text();
       if (/<html/i.test(texte.slice(0, 200))) throw new Error("privé");
-      const avant = new Set(mots);
+      const avant = new Set(mots), premiereFois = source.type === "exemple";
       const ok = appliquerMots(premiereColonneCSV(texte), { type: "sheet", libelle: "Google Sheet", maj: new Date().toISOString() });
       if (!ok) throw new Error("vide");
       const ajoutes = mots.filter(m => !avant.has(m)).length;
-      if (ajoutes && silencieux) toast(ajoutes > 1 ? ajoutes + " nouveaux mots à lire !" : "1 nouveau mot à lire !");
+      if (ajoutes && silencieux && !premiereFois) toast(ajoutes > 1 ? ajoutes + L(" nouveaux mots à lire !", " nieuwe woorden om te lezen!") : L("1 nouveau mot à lire !", "1 nieuw woord om te lezen!"));
       if (!silencieux) statutMots = { ok: true, texte: mots.length + " mots et lettres chargés depuis le Google Sheet." };
       return true;
     } catch (e) {
@@ -705,7 +728,7 @@ textarea { min-height: 150px; resize: vertical; }
   function barre(gauche, titre, droite) {
     return `<div class="barre">${gauche || '<span class="espace"></span>'}<div class="titre">${titre || ""}</div>${droite || '<span class="espace"></span>'}</div>`;
   }
-  const retour = (action, label) => `<button class="rond" data-a="${action}" aria-label="${label || "Retour"}">⬅️</button>`;
+  const retour = (action, label) => `<button class="rond" data-a="${action}" aria-label="${label || L("Retour", "Terug")}">⬅️</button>`;
   const avatarProfil = p => `<span class="rond" style="background:${p.couleur}" aria-hidden="true">${p.animal}</span>`;
 
   function vueProfils() {
@@ -713,51 +736,51 @@ textarea { min-height: 150px; resize: vertical; }
       <button class="tuile" style="--c:${p.couleur}" data-a="choisirProfil" data-id="${p.id}">
         <span class="avatar">${p.animal}</span><span class="nom">${esc(p.nom)}</span>
       </button>`).join("");
-    const ajout = profils.length < MAX_PROFILS ? `<button class="tuile ajout" data-a="nouveauProfil"><span class="avatar">+</span><span class="nom">Nouveau</span></button>` : "";
+    const ajout = profils.length < MAX_PROFILS ? `<button class="tuile ajout" data-a="nouveauProfil"><span class="avatar">+</span><span class="nom">${L("Nouveau", "Nieuw")}</span></button>` : "";
     return `
       <div class="centre">
-        <div class="entete"><h1>Qui veut lire ?</h1><p>${profils.length ? "Touche ton animal pour commencer" : "Crée ton profil pour commencer"}</p></div>
+        <div class="entete"><h1>${L("Qui veut lire ?", "Wie wil er lezen?")}</h1><p>${profils.length ? L("Touche ton animal pour commencer", "Tik op je dier om te beginnen") : L("Crée ton profil pour commencer", "Maak je profiel om te beginnen")}</p></div>
         <div class="grille-profils">${tuiles}${ajout}</div>
       </div>
-      <div class="bas"><button class="lien-parents" data-a="ouvrirPorte">🔒 Espace parents</button></div>
+      <div class="bas"><button class="lien-parents" data-a="ouvrirPorte">🔒 ${L("Espace parents", "Voor ouders")}</button></div>
       <p class="copyright">© ${new Date().getFullYear()} Sillage Prod</p>
-      <p class="version">Version ${VERSION}${versionEnLigne === null ? "" : versionEnLigne === VERSION ? " · ✓ à jour" : ""}</p>
-      ${versionEnLigne && versionEnLigne !== VERSION ? `<div class="bas"><button class="maj" data-a="mettreAJour">⬇️ Nouvelle version ${esc(versionEnLigne)} : touchez pour mettre à jour</button></div>` : ""}`;
+      <p class="version">${L("Version", "Versie")} ${VERSION}${L("", "-NL")}${versionEnLigne === null ? "" : versionEnLigne === VERSION ? L(" · ✓ à jour", " · ✓ up-to-date") : ""}</p>
+      ${versionEnLigne && versionEnLigne !== VERSION ? `<div class="bas"><button class="maj" data-a="mettreAJour">${L(`⬇️ Nouvelle version ${esc(versionEnLigne)} : touchez pour mettre à jour`, `⬇️ Nieuwe versie ${esc(versionEnLigne)}-NL: tik om bij te werken`)}</button></div>` : ""}`;
   }
 
   function vueNouveauProfil() {
     const b = brouillon;
     return `
-      ${barre(retour("versProfils"), "<h2>Nouveau profil</h2>")}
+      ${barre(retour("versProfils"), `<h2>${L("Nouveau profil", "Nieuw profiel")}</h2>`)}
       <div class="centre">
         <div class="panneau">
-          <label class="etiquette" for="nomProfil">Ton prénom</label>
-          <input id="nomProfil" type="text" maxlength="16" autocomplete="off" value="${esc(b.nom)}" placeholder="Prénom">
-          <div class="etiquette">Ton animal</div>
+          <label class="etiquette" for="nomProfil">${L("Ton prénom", "Je voornaam")}</label>
+          <input id="nomProfil" type="text" maxlength="16" autocomplete="off" value="${esc(b.nom)}" placeholder="${L("Prénom", "Voornaam")}">
+          <div class="etiquette">${L("Ton animal", "Je dier")}</div>
           <div class="choix-animaux">${ANIMAUX.map(a => `<button data-a="animal" data-v="${a}" aria-pressed="${a === b.animal}">${a}</button>`).join("")}</div>
-          <div class="etiquette">Ta couleur</div>
-          <div class="choix-couleurs">${COULEURS.map(c => `<button data-a="couleur" data-v="${c}" style="--c:${c}" aria-label="Couleur" aria-pressed="${c === b.couleur}"></button>`).join("")}</div>
-          <button class="gros vert" data-a="creerProfil" id="btnCreer">C'est moi ! ✓</button>
+          <div class="etiquette">${L("Ta couleur", "Je kleur")}</div>
+          <div class="choix-couleurs">${COULEURS.map(c => `<button data-a="couleur" data-v="${c}" style="--c:${c}" aria-label="${L("Couleur", "Kleur")}" aria-pressed="${c === b.couleur}"></button>`).join("")}</div>
+          <button class="gros vert" data-a="creerProfil" id="btnCreer">${L("C'est moi ! ✓", "Dat ben ik! ✓")}</button>
         </div>
       </div>`;
   }
 
   function vueModes() {
     return `
-      ${barre(retour("versProfils", "Changer de profil"), `<h2>Bonjour ${esc(profil.nom)} !</h2>`, avatarProfil(profil))}
+      ${barre(retour("versProfils", L("Changer de profil", "Ander profiel")), `<h2>${L(`Bonjour ${esc(profil.nom)} !`, `Dag ${esc(profil.nom)}!`)}</h2>`, avatarProfil(profil))}
       <div class="centre">
         <div class="modes">
-          <button class="mode timer" data-a="versTimer"><span class="ico">⏱️</span><span class="nom">Timer</span><span class="sous">Course contre la montre</span></button>
-          <button class="mode normal" data-a="versNormal" ${mots.length ? "" : "disabled"}><span class="ico">📖</span><span class="nom">Normal</span><span class="sous">Tous les mots, sans se presser</span></button>
+          <button class="mode timer" data-a="versTimer"><span class="ico">⏱️</span><span class="nom">Timer</span><span class="sous">${L("Course contre la montre", "Race tegen de klok")}</span></button>
+          <button class="mode normal" data-a="versNormal" ${mots.length ? "" : "disabled"}><span class="ico">📖</span><span class="nom">${L("Normal", "Normaal")}</span><span class="sous">${L("Tous les mots, sans se presser", "Alle woorden, zonder haast")}</span></button>
         </div>
-        <div class="bas"><button class="gros blanc" data-a="versProgres">📈 Mes progrès</button></div>
+        <div class="bas"><button class="gros blanc" data-a="versProgres">📈 ${L("Mes progrès", "Mijn vooruitgang")}</button></div>
       </div>`;
   }
 
   function vueTimer() {
     const btns = DUREES.map(n => `<button class="duree" data-a="duree" data-v="${n}" aria-pressed="${n === dureeChoisie}"><b>${n < 1 ? Math.round(n * 60) : n}</b><span>${n < 1 ? "sec" : "min"}</span></button>`).join("");
     return `
-      ${barre(retour("versModes"), "<h2>Combien de temps ?</h2>", avatarProfil(profil))}
+      ${barre(retour("versModes"), `<h2>${L("Combien de temps ?", "Hoe lang?")}</h2>`, avatarProfil(profil))}
       <div class="centre">
         <div class="durees">${btns}</div>
         <div class="bas"><button class="gros vert" data-a="lancerTimer" style="min-width:260px">▶ Start</button></div>
@@ -766,13 +789,13 @@ textarea { min-height: 150px; resize: vertical; }
 
   function vueNormal() {
     if (!nombrePossible(nombreChoisi)) nombreChoisi = "tout";
-    const btns = NOMBRES.map(n => `<button class="duree" data-a="nombre" data-v="${n}" aria-pressed="${n === nombreChoisi}" ${nombrePossible(n) ? "" : "disabled"}><b>${nombreLabel(n)}</b><span>${n === "tout" ? mots.length + " mots" : n === "new" ? Math.min(NB_NEW, mots.length) + " derniers" : "mots"}</span></button>`).join("");
+    const btns = NOMBRES.map(n => `<button class="duree" data-a="nombre" data-v="${n}" aria-pressed="${n === nombreChoisi}" ${nombrePossible(n) ? "" : "disabled"}><b>${nombreLabel(n)}</b><span>${n === "tout" ? mots.length + L(" mots", " woorden") : n === "new" ? Math.min(NB_NEW, mots.length) + L(" derniers", " laatste") : L("mots", "woorden")}</span></button>`).join("");
     const manque = NOMBRES.some(n => !nombrePossible(n));
     return `
-      ${barre(retour("versModes"), "<h2>Combien de mots ?</h2>", avatarProfil(profil))}
+      ${barre(retour("versModes"), `<h2>${L("Combien de mots ?", "Hoeveel woorden?")}</h2>`, avatarProfil(profil))}
       <div class="centre">
         <div class="durees nombres">${btns}</div>
-        ${manque ? `<p class="note">La liste contient ${mots.length} mots et lettres.</p>` : ""}
+        ${manque ? `<p class="note">${L(`La liste contient ${mots.length} mots et lettres.`, `De lijst bevat ${mots.length} woorden en letters.`)}</p>` : ""}
         <div class="bas"><button class="gros vert" data-a="lancerNormal" style="min-width:260px">▶ Start</button></div>
       </div>`;
   }
@@ -784,11 +807,11 @@ textarea { min-height: 150px; resize: vertical; }
       : `<span class="pastille"><span id="compteur">${p.index + 1} / ${p.total}</span></span>`;
     return `
       <div class="jeu">
-        ${barre(`<button class="rond" data-a="arreter" id="btnArreter" aria-label="Arrêter">✖️</button>`, pastille, avatarProfil(profil))}
+        ${barre(`<button class="rond" data-a="arreter" id="btnArreter" aria-label="${L("Arrêter", "Stoppen")}">✖️</button>`, pastille, avatarProfil(profil))}
         <div class="scene"><div class="cadre-mot entre" id="mot"></div><div class="verdict" id="verdict"></div></div>
         <div class="reponses">
-          <button class="rep v" data-a="repondre" data-v="1" aria-label="Juste">V</button>
-          <button class="rep x" data-a="repondre" data-v="0" aria-label="Faux">X</button>
+          <button class="rep v" data-a="repondre" data-v="1" aria-label="${L("Juste", "Juist")}">V</button>
+          <button class="rep x" data-a="repondre" data-v="0" aria-label="${L("Faux", "Fout")}">X</button>
         </div>
       </div>`;
   }
@@ -797,44 +820,44 @@ textarea { min-height: 150px; resize: vertical; }
     const r = fin.resultat, prec = fin.precedent;
     let medaille = "⭐", message = "", classe = "";
     if (r.mode === "timer") {
-      if (!prec) message = `C'est ton premier score en ${minutes(r.duree)} !`;
-      else if (r.justes > prec.justes) { message = `Tu as fait mieux que la dernière fois (${prec.justes}) !`; classe = "mieux"; medaille = "🏆"; }
-      else if (r.justes === prec.justes) message = `Pareil que la dernière fois (${prec.justes}). Bien joué !`;
-      else message = `La dernière fois, tu en avais ${prec.justes}. Tu vas y arriver !`;
+      if (!prec) message = L(`C'est ton premier score en ${minutes(r.duree)} !`, `Je eerste score in ${minutes(r.duree)}!`);
+      else if (r.justes > prec.justes) { message = L(`Tu as fait mieux que la dernière fois (${prec.justes}) !`, `Beter dan de vorige keer (${prec.justes})!`); classe = "mieux"; medaille = "🏆"; }
+      else if (r.justes === prec.justes) message = L(`Pareil que la dernière fois (${prec.justes}). Bien joué !`, `Even goed als de vorige keer (${prec.justes}). Goed gedaan!`);
+      else message = L(`La dernière fois, tu en avais ${prec.justes}. Tu vas y arriver !`, `De vorige keer had je er ${prec.justes}. Het gaat je lukken!`);
       return `
         <div class="fin">
           <div class="medaille">${medaille}</div>
-          <h1 class="bravo">Bravo ${esc(profil.nom)} !</h1>
-          ${fin.record ? '<span class="badge">Nouveau record !</span>' : ""}
+          <h1 class="bravo">${L(`Bravo ${esc(profil.nom)} !`, `Bravo ${esc(profil.nom)}!`)}</h1>
+          ${fin.record ? `<span class="badge">${L("Nouveau record !", "Nieuw record!")}</span>` : ""}
           <div class="score-grand">${r.justes}</div>
-          <div class="score-legende">mot${r.justes > 1 ? "s" : ""} juste${r.justes > 1 ? "s" : ""} en ${minutes(r.duree)}</div>
+          <div class="score-legende">${L(`mot${r.justes > 1 ? "s" : ""} juste${r.justes > 1 ? "s" : ""} en`, r.justes === 1 ? "juist woord in" : "juiste woorden in")} ${minutes(r.duree)}</div>
           <div class="message ${classe}">${message}</div>
-          <div class="actions"><button class="gros vert" data-a="lancerTimer">🔁 Rejouer</button><button class="gros blanc" data-a="versModes">🏠 Menu</button></div>
+          <div class="actions"><button class="gros vert" data-a="lancerTimer">🔁 ${L("Rejouer", "Opnieuw")}</button><button class="gros blanc" data-a="versModes">🏠 Menu</button></div>
         </div>`;
     }
     const morceaux = [];
-    if (!prec) message = `C'est ta première partie avec ${nombreTexte(r.nombre)} !`;
+    if (!prec) message = L(`C'est ta première partie avec ${nombreTexte(r.nombre)} !`, `Je eerste spel met ${nombreTexte(r.nombre)}!`);
     else {
       const mieuxJuste = taux(r) > taux(prec), pireJuste = taux(r) < taux(prec);
       const plusRapide = r.tempsMs < prec.tempsMs - 1000, plusLent = r.tempsMs > prec.tempsMs + 1000;
-      if (mieuxJuste) morceaux.push("plus de bonnes réponses");
-      if (plusRapide) morceaux.push("plus rapide de " + tempsEnMots(prec.tempsMs - r.tempsMs));
-      if (mieuxJuste || (!pireJuste && plusRapide)) { message = "Tu as fait mieux que la dernière fois : " + morceaux.join(" et ") + " !"; classe = "mieux"; medaille = "🏆"; }
-      else if (!pireJuste && !plusLent) message = "Aussi bien que la dernière fois. Bien joué !";
-      else message = `La dernière fois : ${prec.justes} juste${prec.justes > 1 ? "s" : ""} sur ${prec.total} en ${tempsEnMots(prec.tempsMs)}. Continue, tu progresses !`;
+      if (mieuxJuste) morceaux.push(L("plus de bonnes réponses", "meer juiste antwoorden"));
+      if (plusRapide) { const t = tempsEnMots(prec.tempsMs - r.tempsMs); morceaux.push(L("plus rapide de " + t, t + " sneller")); }
+      if (mieuxJuste || (!pireJuste && plusRapide)) { message = L("Tu as fait mieux que la dernière fois : ", "Beter dan de vorige keer: ") + morceaux.join(L(" et ", " en ")) + L(" !", "!"); classe = "mieux"; medaille = "🏆"; }
+      else if (!pireJuste && !plusLent) message = L("Aussi bien que la dernière fois. Bien joué !", "Even goed als de vorige keer. Goed gedaan!");
+      else message = L(`La dernière fois : ${prec.justes} juste${prec.justes > 1 ? "s" : ""} sur ${prec.total} en ${tempsEnMots(prec.tempsMs)}. Continue, tu progresses !`, `De vorige keer: ${prec.justes} juist op ${prec.total} in ${tempsEnMots(prec.tempsMs)}. Doe zo verder, je wordt steeds beter!`);
     }
     return `
       <div class="fin">
         <div class="medaille">${medaille}</div>
-        <h1 class="bravo">Bravo ${esc(profil.nom)} !</h1>
-        ${fin.record ? '<span class="badge">Nouveau record !</span>' : ""}
+        <h1 class="bravo">${L(`Bravo ${esc(profil.nom)} !`, `Bravo ${esc(profil.nom)}!`)}</h1>
+        ${fin.record ? `<span class="badge">${L("Nouveau record !", "Nieuw record!")}</span>` : ""}
         <div class="cases">
-          <div class="case v"><b>${r.justes}</b><span>juste${r.justes > 1 ? "s" : ""} ✓</span></div>
-          <div class="case x"><b>${r.faux}</b><span>faux ✗</span></div>
-          <div class="case t"><b>${mmss(r.tempsMs)}</b><span>temps</span></div>
+          <div class="case v"><b>${r.justes}</b><span>${L("juste" + (r.justes > 1 ? "s" : ""), "juist")} ✓</span></div>
+          <div class="case x"><b>${r.faux}</b><span>${L("faux", "fout")} ✗</span></div>
+          <div class="case t"><b>${mmss(r.tempsMs)}</b><span>${L("temps", "tijd")}</span></div>
         </div>
         <div class="message ${classe}">${message}</div>
-        <div class="actions"><button class="gros vert" data-a="lancerNormal">🔁 Rejouer</button><button class="gros blanc" data-a="versModes">🏠 Menu</button></div>
+        <div class="actions"><button class="gros vert" data-a="lancerNormal">🔁 ${L("Rejouer", "Opnieuw")}</button><button class="gros blanc" data-a="versModes">🏠 Menu</button></div>
       </div>`;
   }
 
@@ -877,9 +900,9 @@ textarea { min-height: 150px; resize: vertical; }
       let rec = -1;
       const points = liste.map(r => { const p = { valeur: r.justes, etiquette: r.justes, date: dateCourte(r.date), record: r.justes > rec && r.justes === meilleur }; if (p.record) rec = r.justes; return p; });
       contenu = `<div class="puces">${puces}</div>` + (liste.length
-        ? `<div class="resume"><div class="case v"><b>${meilleur}</b><span>record en ${dureeCourte(v.duree)}</span></div><div class="case t"><b>${resultatsDe(profil.id, "timer", v.duree).length}</b><span>parties</span></div></div>
-           <div class="graphe">${grapheBarres(points, { max: 5, titre: "Mots justes en " + minutes(v.duree) })}</div>`
-        : `<div class="graphe"><div class="vide"><span class="ico">⏱️</span>Pas encore de partie en ${minutes(v.duree)}.<br>Lance un Timer pour voir ton score ici !</div></div>`);
+        ? `<div class="resume"><div class="case v"><b>${meilleur}</b><span>${L("record en", "record in")} ${dureeCourte(v.duree)}</span></div><div class="case t"><b>${resultatsDe(profil.id, "timer", v.duree).length}</b><span>${L("parties", "spelletjes")}</span></div></div>
+           <div class="graphe">${grapheBarres(points, { max: 5, titre: L("Mots justes en ", "Juiste woorden in ") + minutes(v.duree) })}</div>`
+        : `<div class="graphe"><div class="vide"><span class="ico">⏱️</span>${L(`Pas encore de partie en ${minutes(v.duree)}.<br>Lance un Timer pour voir ton score ici !`, `Nog geen spel van ${minutes(v.duree)}.<br>Start een Timer om je score hier te zien!`)}</div></div>`);
     } else {
       if (v.nombre == null) v.nombre = dernierDe("normal") ? varianteDe(dernierDe("normal")) : nombreChoisi;
       const pucesN = NOMBRES.map(n => `<button class="puce normal" data-a="progresNombre" data-v="${n}" aria-pressed="${n === v.nombre}">${avecNombre(nombreLabel(n), resultatsDe(profil.id, "normal", n).length)}</button>`).join("");
@@ -889,16 +912,16 @@ textarea { min-height: 150px; resize: vertical; }
       const points = liste.map(r => { const pc = Math.round(taux(r) * 100); const p = { valeur: pc, etiquette: pc + "%", date: dateCourte(r.date), sous: "⏱ " + mmss(r.tempsMs), record: pc > rec && pc === meilleur }; if (p.record) rec = pc; return p; });
       const plusRapide = liste.length ? Math.min(...liste.map(r => r.tempsMs)) : 0;
       contenu = `<div class="puces">${pucesN}</div>` + (liste.length
-        ? `<div class="resume"><div class="case v"><b>${meilleur}%</b><span>meilleur score</span></div><div class="case t"><b>${mmss(plusRapide)}</b><span>plus rapide</span></div><div class="case"><b>${resultatsDe(profil.id, "normal", v.nombre).length}</b><span>parties</span></div></div>
-           <div class="graphe">${grapheBarres(points, { max: 100, titre: "Pourcentage de bonnes réponses" })}</div>`
-        : `<div class="graphe"><div class="vide"><span class="ico">📖</span>Pas encore de partie avec ${nombreTexte(v.nombre)}.<br>Joue une partie pour voir ton score ici !</div></div>`);
+        ? `<div class="resume"><div class="case v"><b>${meilleur}%</b><span>${L("meilleur score", "beste score")}</span></div><div class="case t"><b>${mmss(plusRapide)}</b><span>${L("plus rapide", "snelste")}</span></div><div class="case"><b>${resultatsDe(profil.id, "normal", v.nombre).length}</b><span>${L("parties", "spelletjes")}</span></div></div>
+           <div class="graphe">${grapheBarres(points, { max: 100, titre: L("Pourcentage de bonnes réponses", "Percentage juiste antwoorden") })}</div>`
+        : `<div class="graphe"><div class="vide"><span class="ico">📖</span>${L(`Pas encore de partie avec ${nombreTexte(v.nombre)}.<br>Joue une partie pour voir ton score ici !`, `Nog geen spel met ${nombreTexte(v.nombre)}.<br>Speel een spel om je score hier te zien!`)}</div></div>`);
     }
     return `
-      ${barre(retour("versModes"), `<h2>Les progrès de ${esc(profil.nom)}</h2>`, avatarProfil(profil))}
+      ${barre(retour("versModes"), `<h2>${L(`Les progrès de ${esc(profil.nom)}`, `De vooruitgang van ${esc(profil.nom)}`)}</h2>`, avatarProfil(profil))}
       <div class="parents" style="padding-top:12px">
         <div class="onglets">
           <button class="onglet timer" data-a="progresMode" data-v="timer" aria-pressed="${v.mode === "timer"}">⏱️ ${avecNombre("Timer", resultatsDe(profil.id, "timer").length)}</button>
-          <button class="onglet normal" data-a="progresMode" data-v="normal" aria-pressed="${v.mode === "normal"}">📖 ${avecNombre("Normal", resultatsDe(profil.id, "normal").length)}</button>
+          <button class="onglet normal" data-a="progresMode" data-v="normal" aria-pressed="${v.mode === "normal"}">📖 ${avecNombre(L("Normal", "Normaal"), resultatsDe(profil.id, "normal").length)}</button>
         </div>
         ${contenu}
       </div>`;
@@ -906,40 +929,40 @@ textarea { min-height: 150px; resize: vertical; }
 
   function vuePorte() {
     return `
-      ${barre(retour("versProfils"), "<h2>Espace parents</h2>")}
+      ${barre(retour("versProfils"), `<h2>${L("Espace parents", "Voor ouders")}</h2>`)}
       <div class="centre"><div class="panneau porte">
-        <p class="etiquette">Pour entrer, réponds à cette question :</p>
+        <p class="etiquette">${L("Pour entrer, réponds à cette question :", "Beantwoord deze vraag om binnen te gaan:")}</p>
         <div class="question">${porte.a} × ${porte.b} = ?</div>
         <div class="ligne">${porte.choix.map(c => `<button class="gros blanc" data-a="porteRep" data-v="${c}">${c}</button>`).join("")}</div>
       </div></div>`;
   }
 
   function vueParents() {
-    const maj = source.maj ? " · mis à jour le " + new Date(source.maj).toLocaleDateString("fr-BE") + " à " + new Date(source.maj).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }) : "";
+    const maj = source.maj ? L(" · mis à jour le ", " · bijgewerkt op ") + new Date(source.maj).toLocaleDateString(LOCALE) + L(" à ", " om ") + new Date(source.maj).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" }) : "";
     const lignesProfils = profils.map(p => {
       const n = resultats.filter(r => r.profil === p.id).length;
       return `
       <div class="profil-ligne">${avatarProfil(p)}
-        <div class="qui"><span class="nom">${esc(p.nom)}</span><span class="aide">${n} partie${n > 1 ? "s" : ""}</span></div>
-        ${suppressionArmee === p.id ? "" : `<button class="btn-danger" data-a="supprimerProfil" data-id="${p.id}">Supprimer</button>`}
+        <div class="qui"><span class="nom">${esc(p.nom)}</span><span class="aide">${n} ${L("partie" + (n > 1 ? "s" : ""), n === 1 ? "spel" : "spelletjes")}</span></div>
+        ${suppressionArmee === p.id ? "" : `<button class="btn-danger" data-a="supprimerProfil" data-id="${p.id}">${L("Supprimer", "Verwijderen")}</button>`}
         ${suppressionArmee === p.id ? `
         <div class="confirmer">
-          <p>Supprimer <b>${esc(p.nom)}</b> et ${n > 1 ? "ses " + n + " parties" : n ? "sa partie" : "son profil"} ?${lienSynchro ? " Ce sera aussi effacé sur les autres appareils." : ""}</p>
-          <div class="ligne"><button class="btn-danger arme" data-a="supprimerProfil" data-id="${p.id}">Oui, supprimer</button><button class="gros blanc petit" data-a="annulerSuppression">Annuler</button></div>
+          <p>${L(`Supprimer <b>${esc(p.nom)}</b> et ${n > 1 ? "ses " + n + " parties" : n ? "sa partie" : "son profil"} ?`, `<b>${esc(p.nom)}</b> en ${n > 1 ? "de " + n + " spelletjes" : n ? "het spel" : "het profiel"} verwijderen?`)}${lienSynchro ? " Ce sera aussi effacé sur les autres appareils." : ""}</p>
+          <div class="ligne"><button class="btn-danger arme" data-a="supprimerProfil" data-id="${p.id}">${L("Oui, supprimer", "Ja, verwijderen")}</button><button class="gros blanc petit" data-a="annulerSuppression">${L("Annuler", "Annuleren")}</button></div>
         </div>` : ""}
       </div>`;
-    }).join("") || `<p class="aide">Aucun profil pour l'instant.</p>`;
+    }).join("") || `<p class="aide">${L("Aucun profil pour l'instant.", "Nog geen profielen.")}</p>`;
     return `
-      ${barre(retour("versProfils"), "<h2>Espace parents</h2>")}
+      ${barre(retour("versProfils"), `<h2>${L("Espace parents", "Voor ouders")}</h2>`)}
       <div class="parents" style="padding-top:12px">
         <section class="panneau">
-          <h3>Mots et lettres à lire</h3>
-          <p class="aide"><b>${mots.length}</b> mots et lettres · ${esc(source.libelle)}${maj}</p>
+          <h3>${L("Mots et lettres à lire", "Woorden en letters om te lezen")}</h3>
+          <p class="aide"><b>${mots.length}</b> ${L("mots et lettres · " + esc(source.libelle) + maj, "woorden en letters" + (motsPerso.length ? ` (${motsPerso.length} van u)` : "") + maj)}</p>
           <div class="apercu">${mots.map(m => `<span>${esc(m)}</span>`).join("")}</div>
           ${statutMots ? `<p class="statut ${statutMots.ok ? "ok" : "ko"}">${esc(statutMots.texte)}</p>` : ""}
         </section>
 
-        <section class="panneau">
+        ${NL ? "" : `<section class="panneau">
           <h3>Depuis un Google Sheet (conseillé)</h3>
           <ol class="aide">
             <li>Créez un Google Sheet et écrivez un mot ou une lettre par ligne dans la <b>colonne A</b>.</li>
@@ -957,22 +980,22 @@ textarea { min-height: 150px; resize: vertical; }
           <p class="aide">Un mot ou une lettre par ligne dans la colonne A. La liste actuelle est remplacée.</p>
           <div class="ligne"><label class="gros blanc petit" for="fichierMots" style="cursor:pointer">📄 Choisir un fichier</label>
             <input id="fichierMots" type="file" accept=".xlsx,.xls,.ods,.csv,.txt" hidden></div>
+        </section>`}
+
+        <section class="panneau">
+          <h3>${L("Écrire la liste à la main", "Zelf woorden toevoegen")}</h3>
+          <p class="aide">${L("Un mot ou une lettre par ligne.", "Eén woord of letter per regel. Ze worden toegevoegd aan de lijst van de app.")}</p>
+          <textarea id="listeManuelle">${esc((NL ? motsPerso : mots).join("\n"))}</textarea>
+          <div class="ligne"><button class="gros bleu petit" data-a="enregistrerListe">${L("Enregistrer la liste", "Opslaan")}</button></div>
         </section>
 
         <section class="panneau">
-          <h3>Écrire la liste à la main</h3>
-          <p class="aide">Un mot ou une lettre par ligne.</p>
-          <textarea id="listeManuelle">${esc(mots.join("\n"))}</textarea>
-          <div class="ligne"><button class="gros bleu petit" data-a="enregistrerListe">Enregistrer la liste</button></div>
-        </section>
-
-        <section class="panneau">
-          <h3>Profils (${profils.length}/${MAX_PROFILS})</h3>
-          <p class="aide">Supprimer un profil efface aussi tous ses résultats.</p>
+          <h3>${L("Profils", "Profielen")} (${profils.length}/${MAX_PROFILS})</h3>
+          <p class="aide">${L("Supprimer un profil efface aussi tous ses résultats.", "Als u een profiel verwijdert, worden ook alle resultaten gewist.")}</p>
           ${lignesProfils}
         </section>
 
-        <section class="panneau">
+        ${NL ? "" : `<section class="panneau">
           <h3>Synchroniser l'iPad et l'iPhone</h3>
           ${lienSynchro ? `
             <p class="statut ${etatSynchro && !etatSynchro.ok ? "ko" : "ok"}">${etatSynchro && !etatSynchro.ok ? esc(etatSynchro.texte) : etatSynchro && etatSynchro.date ? "✓ Synchronisé le " + new Date(etatSynchro.date).toLocaleDateString("fr-BE") + " à " + new Date(etatSynchro.date).toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" }) : "Connexion…"}</p>
@@ -993,11 +1016,11 @@ textarea { min-height: 150px; resize: vertical; }
               <button class="gros bleu petit" data-a="connecterSynchro">Connecter</button>
             </div>
             ${etatSynchro && !etatSynchro.ok ? `<p class="statut ko">${esc(etatSynchro.texte)}</p>` : ""}`}
-        </section>
+        </section>`}
 
         <section class="panneau">
-          <h3>Sons</h3>
-          <div class="ligne"><button class="gros petit ${sonActif ? "vert" : "blanc"}" data-a="son">${sonActif ? "🔊 Sons activés" : "🔇 Sons coupés"}</button></div>
+          <h3>${L("Sons", "Geluid")}</h3>
+          <div class="ligne"><button class="gros petit ${sonActif ? "vert" : "blanc"}" data-a="son">${sonActif ? L("🔊 Sons activés", "🔊 Geluid aan") : L("🔇 Sons coupés", "🔇 Geluid uit")}</button></div>
         </section>
       </div>`;
   }
@@ -1014,7 +1037,8 @@ textarea { min-height: 150px; resize: vertical; }
       champ.addEventListener("input", maj); maj();
     }
     if (ecran === "parents") {
-      document.getElementById("fichierMots").addEventListener("change", e => { const f = e.target.files[0]; if (f) lireFichier(f); });
+      const fichier = document.getElementById("fichierMots");
+      if (fichier) fichier.addEventListener("change", e => { const f = e.target.files[0]; if (f) lireFichier(f); });
     }
   }
   const aller = e => { ecran = e; window.scrollTo(0, 0); afficher(); };
@@ -1095,23 +1119,23 @@ textarea { min-height: 150px; resize: vertical; }
     aller("fin");
     const mieux = precedent && (p.mode === "timer" ? r.justes > precedent.justes : (taux(r) > taux(precedent) || (taux(r) === taux(precedent) && r.tempsMs < precedent.tempsMs - 1000)));
     const nom = profil.nom, pc = Math.round(taux(r) * 100);
-    const valeur = p.mode === "timer" ? { valeur: r.justes, legende: r.justes > 1 ? "mots justes" : "mot juste" } : { valeur: pc, suffixe: " %", legende: "de bonnes réponses" };
+    const valeur = p.mode === "timer" ? { valeur: r.justes, legende: r.justes > 1 ? L("mots justes", "juiste woorden") : L("mot juste", "juist woord") } : { valeur: pc, suffixe: " %", legende: L("de bonnes réponses", "juiste antwoorden") };
     let delta = "";
     if (precedent && mieux) {
-      if (p.mode === "timer") { const d = r.justes - precedent.justes; delta = "+" + d + (d > 1 ? " mots" : " mot") + " par rapport à la dernière fois"; }
-      else if (pc > Math.round(taux(precedent) * 100)) delta = "+" + (pc - Math.round(taux(precedent) * 100)) + " % de bonnes réponses";
-      else delta = tempsEnMots(precedent.tempsMs - r.tempsMs) + " plus rapide !";
+      if (p.mode === "timer") { const d = r.justes - precedent.justes; delta = "+" + d + L((d > 1 ? " mots" : " mot") + " par rapport à la dernière fois", (d > 1 ? " woorden" : " woord") + " meer dan de vorige keer"); }
+      else if (pc > Math.round(taux(precedent) * 100)) delta = "+" + (pc - Math.round(taux(precedent) * 100)) + L(" % de bonnes réponses", " % juiste antwoorden");
+      else delta = tempsEnMots(precedent.tempsMs - r.tempsMs) + L(" plus rapide !", " sneller!");
     }
-    if (record) grandeFete({ emoji: "🏆", titre: "Nouveau record !", sous: nom + ", tu n'as jamais fait aussi bien. Tu es une vraie star !", delta, parole: "Bravo " + nom + " ! Nouveau record !", ...valeur });
-    else if (mieux) grandeFete({ emoji: "🚀", titre: "Super " + nom + " !", sous: "Tu as fait mieux que la dernière fois. Continue comme ça !", delta, parole: "Super " + nom + " ! Tu as fait mieux que la dernière fois !", ...valeur });
-    else if (!precedent) grandeFete({ emoji: "🌟", titre: "Bravo " + nom + " !", sous: "Ta toute première partie : c'est un super début !", parole: "Bravo " + nom + " ! C'est un super début !", ...valeur });
-    else setTimeout(() => dire("Bravo " + nom + " !"), 500);
+    if (record) grandeFete({ emoji: "🏆", titre: L("Nouveau record !", "Nieuw record!"), sous: L(nom + ", tu n'as jamais fait aussi bien. Tu es une vraie star !", nom + ", zo goed heb je het nog nooit gedaan. Je bent een echte ster!"), delta, parole: L("Bravo " + nom + " ! Nouveau record !", "Bravo " + nom + "! Nieuw record!"), ...valeur });
+    else if (mieux) grandeFete({ emoji: "🚀", titre: L("Super " + nom + " !", "Super " + nom + "!"), sous: L("Tu as fait mieux que la dernière fois. Continue comme ça !", "Beter dan de vorige keer. Doe zo verder!"), delta, parole: L("Super " + nom + " ! Tu as fait mieux que la dernière fois !", "Super " + nom + "! Beter dan de vorige keer!"), ...valeur });
+    else if (!precedent) grandeFete({ emoji: "🌟", titre: L("Bravo " + nom + " !", "Bravo " + nom + "!"), sous: L("Ta toute première partie : c'est un super début !", "Je allereerste spel: een super begin!"), parole: L("Bravo " + nom + " ! C'est un super début !", "Bravo " + nom + "! Een super begin!"), ...valeur });
+    else setTimeout(() => dire(L("Bravo " + nom + " !", "Bravo " + nom + "!")), 500);
   }
   function arreter() {
     if (!partie) return;
     if (!partie.arretArme) {
       partie.arretArme = true;
-      const b = document.getElementById("btnArreter"); b.textContent = "Sûr ?"; b.style.fontSize = "18px"; b.style.background = "#ffe3e4";
+      const b = document.getElementById("btnArreter"); b.textContent = L("Sûr ?", "Zeker?"); b.style.fontSize = "18px"; b.style.background = "#ffe3e4";
       setTimeout(() => { if (partie && partie.arretArme) { partie.arretArme = false; b.textContent = "✖️"; b.style.fontSize = ""; b.style.background = ""; } }, 2500);
       return;
     }
@@ -1161,6 +1185,12 @@ textarea { min-height: 150px; resize: vertical; }
       await chargerSheet(lienSheet, false); afficher();
     },
     enregistrerListe() {
+      if (NL) {
+        motsPerso = nettoyer(document.getElementById("listeManuelle").value.split(/\r?\n/)); ecrire("motsPerso", motsPerso);
+        mots = nettoyer([...motsPerso, ...motsSheet]);
+        statutMots = { ok: true, texte: `Opgeslagen: ${motsPerso.length} eigen woorden, ${mots.length} woorden en letters in totaal.` };
+        return afficher();
+      }
       const ok = appliquerMots(document.getElementById("listeManuelle").value.split(/\r?\n/), { type: "manuel", libelle: "Liste écrite à la main", maj: new Date().toISOString() });
       if (ok) { lienSheet = ""; ecrire("lienSheet", ""); }
       statutMots = ok ? { ok: true, texte: "Liste enregistrée : " + mots.length + " mots et lettres." } : { ok: false, texte: "La liste est vide." };

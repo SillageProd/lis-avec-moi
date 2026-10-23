@@ -2,6 +2,7 @@
 
 Numérotation MAJEUR.MINEUR.CORRECTIF : MINEUR pour une nouveauté, CORRECTIF pour une correction.
 
+- **1.6.0** — Édition néerlandaise « Lees met mij » (adresse /nl/) pour les autres parents : entièrement en néerlandais, liste de mots fixe lue depuis un Google Sheet caché, mots ajoutés par les parents, sans synchronisation.
 - **1.5.2** — Numéro de version sous le copyright, avec vérification de la dernière version en ligne ; graphique des progrès qui s'ouvre sur les dernières parties.
 - **1.5.1** — Confirmation de suppression d'un profil lisible sur iPhone.
 - **1.5.0** — Grande fête plein écran (première partie, progrès, record).

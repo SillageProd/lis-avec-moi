@@ -14,9 +14,17 @@ Les mots viennent d'un Google Sheet partagé « Tous les utilisateurs disposant 
 un mot ou une lettre par ligne, dans la colonne A. L'app relit la liste à chaque ouverture.
 Le lien se change dans **Espace parents**.
 
+## Édition néerlandaise « Lees met mij »
+
+Une deuxième édition, entièrement en néerlandais, est en ligne à l'adresse `/nl/`, pour la partager avec d'autres parents.
+Elle est produite par `build.py` à partir du même code : chaque changement s'applique aux deux éditions.
+Sa liste de mots vient d'un Google Sheet fixe (non affiché dans l'app). Les parents peuvent y ajouter leurs propres mots.
+Elle n'a ni synchronisation, ni import de fichier.
+
 ## Fichiers
 
 - `index.html`, `sw.js`, `manifest.webmanifest`, `icone-*.png` : l'app en ligne (GitHub Pages).
+- `nl/` : l'édition néerlandaise (mêmes fichiers).
 - `source/` : la version de travail et le script `build.py` qui produit les fichiers ci-dessus.
 
 ## Synchroniser l'iPad et l'iPhone
