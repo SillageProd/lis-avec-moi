@@ -247,6 +247,13 @@ textarea { min-height: 150px; resize: vertical; }
 .porte .ligne { justify-content: center; }
 .porte .ligne button { width: 90px; }
 
+#toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 30;
+  transform: translate(-50%, 140%); opacity: 0; transition: transform .3s, opacity .3s;
+  background: var(--encre); color: #fff; font-size: 20px; font-weight: 600;
+  padding: 14px 22px; border-radius: 20px; box-shadow: var(--ombre); max-width: calc(100% - 32px); text-align: center;
+}
+#toast.visible { transform: translate(-50%, 0); opacity: 1; }
 #confettis { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
 @media (max-width: 520px) {
   .durees, .durees.nombres { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -446,8 +453,11 @@ textarea { min-height: 150px; resize: vertical; }
       if (!rep.ok) throw new Error(rep.status);
       const texte = await rep.text();
       if (/<html/i.test(texte.slice(0, 200))) throw new Error("privé");
+      const avant = new Set(mots);
       const ok = appliquerMots(premiereColonneCSV(texte), { type: "sheet", libelle: "Google Sheet", maj: new Date().toISOString() });
       if (!ok) throw new Error("vide");
+      const ajoutes = mots.filter(m => !avant.has(m)).length;
+      if (ajoutes && silencieux) toast(ajoutes > 1 ? ajoutes + " nouveaux mots à lire !" : "1 nouveau mot à lire !");
       if (!silencieux) statutMots = { ok: true, texte: mots.length + " mots et lettres chargés depuis le Google Sheet." };
       return true;
     } catch (e) {
@@ -482,7 +492,7 @@ textarea { min-height: 150px; resize: vertical; }
   const taux = r => r.total ? r.justes / r.total : 0;
 
   // ---------- synchronisation entre appareils (Google Apps Script) ----------
-  const CODE_SYNCHRO = "/* Lis avec moi - synchronisation des profils et des resultats entre l'iPad et l'iPhone. A coller dans Extensions > Apps Script d'un Google Sheet, en remplacant tout le contenu. */\n\nvar ONGLETS = {\n  Profils: [\"id\", \"nom\", \"animal\", \"couleur\"],\n  Resultats: [\"id\", \"profil\", \"mode\", \"duree\", \"nombre\", \"justes\", \"faux\", \"total\", \"tempsMs\", \"date\"],\n  Supprimes: [\"id\"]\n};\n\nfunction feuille(nom) {\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  var f = ss.getSheetByName(nom);\n  if (!f) {\n    f = ss.insertSheet(nom);\n    f.getRange(\"A:Z\").setNumberFormat(\"@\");\n    f.appendRow(ONGLETS[nom]);\n  }\n  return f;\n}\n\nfunction lireTout(nom) {\n  var valeurs = feuille(nom).getDataRange().getValues();\n  var titres = valeurs.shift();\n  var liste = [];\n  for (var i = 0; i < valeurs.length; i++) {\n    if (valeurs[i][0] === \"\") continue;\n    var o = {};\n    for (var j = 0; j < titres.length; j++) o[titres[j]] = valeurs[i][j];\n    liste.push(o);\n  }\n  return liste;\n}\n\nfunction etat() {\n  var sup = lireTout(\"Supprimes\");\n  var ids = [];\n  for (var i = 0; i < sup.length; i++) ids.push(String(sup[i].id));\n  return { ok: true, profils: lireTout(\"Profils\"), resultats: lireTout(\"Resultats\"), supprimes: ids };\n}\n\nfunction repondre(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doGet() {\n  return repondre(etat());\n}\n\nfunction ajouter(nom, liste) {\n  if (!liste || !liste.length) return;\n  var f = feuille(nom);\n  var existants = lireTout(nom);\n  var deja = {};\n  for (var i = 0; i < existants.length; i++) deja[String(existants[i].id)] = true;\n  var colonnes = ONGLETS[nom];\n  var lignes = [];\n  for (var k = 0; k < liste.length; k++) {\n    var o = liste[k];\n    if (deja[String(o.id)]) continue;\n    var ligne = [];\n    for (var c = 0; c < colonnes.length; c++) {\n      var v = o[colonnes[c]];\n      ligne.push(v === null || v === undefined ? \"\" : String(v));\n    }\n    lignes.push(ligne);\n    deja[String(o.id)] = true;\n  }\n  if (lignes.length) f.getRange(f.getLastRow() + 1, 1, lignes.length, colonnes.length).setValues(lignes);\n}\n\nfunction doPost(e) {\n  var verrou = LockService.getScriptLock();\n  verrou.waitLock(20000);\n  try {\n    var d = JSON.parse(e.postData.contents);\n    var sup = [];\n    var ids = d.supprimes || [];\n    for (var i = 0; i < ids.length; i++) sup.push({ id: ids[i] });\n    ajouter(\"Profils\", d.profils);\n    ajouter(\"Resultats\", d.resultats);\n    ajouter(\"Supprimes\", sup);\n    return repondre(etat());\n  } finally {\n    verrou.releaseLock();\n  }\n}\n";
+  const CODE_SYNCHRO = "/* Lis avec moi - synchronisation des profils et des resultats entre l'iPad et l'iPhone. A coller dans Extensions > Apps Script d'un Google Sheet, en remplacant tout le contenu. */\n\nvar ONGLETS = {\n  Profils: [\"id\", \"nom\", \"animal\", \"couleur\"],\n  Resultats: [\"id\", \"profil\", \"mode\", \"duree\", \"nombre\", \"justes\", \"faux\", \"total\", \"tempsMs\", \"date\"],\n  Supprimes: [\"id\"]\n};\n\nfunction feuille(nom) {\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  var f = ss.getSheetByName(nom);\n  if (!f) {\n    f = ss.insertSheet(nom);\n    f.getRange(\"A:Z\").setNumberFormat(\"@\");\n    f.appendRow(ONGLETS[nom]);\n  }\n  return f;\n}\n\nfunction lireTout(nom) {\n  var valeurs = feuille(nom).getDataRange().getValues();\n  var titres = valeurs.shift();\n  var liste = [];\n  for (var i = 0; i < valeurs.length; i++) {\n    if (valeurs[i][0] === \"\") continue;\n    var o = {};\n    for (var j = 0; j < titres.length; j++) o[titres[j]] = valeurs[i][j];\n    liste.push(o);\n  }\n  return liste;\n}\n\nfunction etat() {\n  var sup = lireTout(\"Supprimes\");\n  var ids = [];\n  for (var i = 0; i < sup.length; i++) ids.push(String(sup[i].id));\n  return { ok: true, profils: lireTout(\"Profils\"), resultats: lireTout(\"Resultats\"), supprimes: ids };\n}\n\nfunction repondre(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doGet() {\n  return repondre(etat());\n}\n\nfunction ajouter(nom, liste) {\n  if (!liste || !liste.length) return;\n  var f = feuille(nom);\n  var existants = lireTout(nom);\n  var deja = {};\n  for (var i = 0; i < existants.length; i++) deja[String(existants[i].id)] = true;\n  var colonnes = ONGLETS[nom];\n  var lignes = [];\n  for (var k = 0; k < liste.length; k++) {\n    var o = liste[k];\n    if (deja[String(o.id)]) continue;\n    var ligne = [];\n    for (var c = 0; c < colonnes.length; c++) {\n      var v = o[colonnes[c]];\n      ligne.push(v === null || v === undefined ? \"\" : String(v));\n    }\n    lignes.push(ligne);\n    deja[String(o.id)] = true;\n  }\n  if (lignes.length) f.getRange(f.getLastRow() + 1, 1, lignes.length, colonnes.length).setValues(lignes);\n}\n\nfunction retirer(ids) {\n  if (!ids || !ids.length) return;\n  var aRetirer = {};\n  for (var i = 0; i < ids.length; i++) aRetirer[String(ids[i])] = true;\n  var f = feuille(\"Resultats\");\n  var valeurs = f.getDataRange().getValues();\n  for (var l = valeurs.length - 1; l >= 1; l--) {\n    if (aRetirer[String(valeurs[l][0])]) f.deleteRow(l + 1);\n  }\n}\n\nfunction doPost(e) {\n  var verrou = LockService.getScriptLock();\n  verrou.waitLock(20000);\n  try {\n    var d = JSON.parse(e.postData.contents);\n    var sup = [];\n    var ids = d.supprimes || [];\n    for (var i = 0; i < ids.length; i++) sup.push({ id: ids[i] });\n    ajouter(\"Profils\", d.profils);\n    ajouter(\"Resultats\", d.resultats);\n    ajouter(\"Supprimes\", sup);\n    retirer(d.retirer);\n    return repondre(etat());\n  } finally {\n    verrou.releaseLock();\n  }\n}\n";
   const normProfil = o => ({ id: String(o.id), nom: String(o.nom), animal: String(o.animal), couleur: String(o.couleur) });
   const vide = v => v === "" || v == null;
   const normResultat = o => ({
@@ -515,6 +525,46 @@ textarea { min-height: 150px; resize: vertical; }
     if (!d || !d.ok) throw new Error("réponse");
     return d;
   }
+  // ---------- tri des résultats ----------
+  // Chaque jour à 6 h : on ne garde que le meilleur résultat de la veille (par enfant, mode, durée ou nombre de mots).
+  // Le 1er du mois à 6 h : on ne garde que les 5 meilleurs résultats du mois précédent.
+  // La règle ne dépend que des résultats eux-mêmes : tous les appareils arrivent au même tri.
+  const meilleurDabord = (a, b) => a.mode === "timer"
+    ? (b.justes - a.justes) || (a.faux - b.faux) || (a.date < b.date ? -1 : 1)
+    : (taux(b) - taux(a)) || (a.tempsMs - b.tempsMs) || (a.date < b.date ? -1 : 1);
+  function compacter(liste, maintenant) {
+    const now = maintenant || new Date();
+    const finDuJour = d => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 6);   // lendemain 6 h
+    const finDuMois = d => new Date(d.getFullYear(), d.getMonth() + 1, 1, 6);            // 1er du mois suivant 6 h
+    const cle = r => r.profil + "|" + r.mode + "|" + varianteDe(r);
+    const regrouper = (l, k) => l.reduce((g, r) => { (g[k(r)] = g[k(r)] || []).push(r); return g; }, {});
+    // 1) un seul résultat par jour terminé
+    const jours = regrouper(liste, r => { const d = new Date(r.date); return finDuJour(d) <= now ? cle(r) + "|" + d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate() : "garder|" + r.id; });
+    const apresJour = Object.values(jours).map(g => g.sort(meilleurDabord)[0]);
+    // 2) cinq résultats par mois terminé
+    const mois = regrouper(apresJour, r => { const d = new Date(r.date); return finDuMois(d) <= now ? cle(r) + "|" + d.getFullYear() + "-" + d.getMonth() : "garder|" + r.id; });
+    const garde = new Set(Object.values(mois).flatMap(g => g.sort(meilleurDabord).slice(0, 5)).map(r => r.id));
+    return liste.filter(r => garde.has(r.id));
+  }
+  // Applique le tri sur cet appareil ; renvoie les identifiants retirés
+  function trierResultats() {
+    const avant = resultats;
+    resultats = compacter(resultats);
+    if (resultats.length === avant.length) return [];
+    sauverResultats();
+    const restants = new Set(resultats.map(r => r.id));
+    return avant.filter(r => !restants.has(r.id)).map(r => r.id);
+  }
+
+  // ---------- petits messages en bas de l'écran ----------
+  let minuteurToast = null;
+  function toast(texte) {
+    let t = document.getElementById("toast");
+    if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+    t.textContent = texte; t.classList.add("visible");
+    clearTimeout(minuteurToast); minuteurToast = setTimeout(() => t.classList.remove("visible"), 3500);
+  }
+
   let synchroEnCours = false, synchroRelance = false;
   async function synchroniser() {
     if (!lienSynchro) return;
@@ -526,8 +576,15 @@ textarea { min-height: 150px; resize: vertical; }
       const sp = ids(srv.profils), sr = ids(srv.resultats), ss = new Set(srv.supprimes.map(String));
       const envoi = { profils: profils.filter(p => !sp.has(p.id)), resultats: resultats.filter(r => !sr.has(r.id)), supprimes: supprimes.filter(id => !ss.has(id)) };
       if (envoi.profils.length || envoi.resultats.length || envoi.supprimes.length) srv = await appelSynchro(envoi);
+      const avant = new Set(profils.map(p => p.id));
       const { ps, rs, alias } = fusionner(srv);
       profils = ps; resultats = rs; sauverProfils(); sauverResultats();
+      const retires = trierResultats();
+      const surServeur = new Set(srv.resultats.map(r => String(r.id)));
+      const aRetirer = retires.filter(id => surServeur.has(id));
+      if (aRetirer.length) appelSynchro({ profils: [], resultats: [], supprimes: [], retirer: aRetirer }).catch(() => {});
+      const nouveaux = profils.filter(p => !avant.has(p.id) && !Object.values(alias).includes(p.id));
+      if (nouveaux.length && avant.size) toast((nouveaux.length > 1 ? "Nouveaux profils : " : "Nouveau profil : ") + nouveaux.map(p => p.animal + " " + p.nom).join(", "));
       if (profil) profil = profils.find(p => p.id === (alias[profil.id] || profil.id)) || null;
       etatSynchro = { ok: true, date: new Date().toISOString(), texte: "" };
     } catch (e) {
@@ -1022,15 +1079,19 @@ textarea { min-height: 150px; resize: vertical; }
     if (e.key === "x" || e.key === "X" || e.key === "ArrowRight") repondre(false);
   });
   addEventListener("resize", () => { if (ecran === "jeu") { const el = document.getElementById("mot"); if (el && partie) el.style.fontSize = ""; montrerMot(); } });
+  // À chaque ouverture (et à chaque retour dans l'app) : tri des résultats, nouveaux profils, nouveaux mots
+  function verifier() {
+    if (trierResultats().length && ["progres", "modes"].includes(ecran)) afficher();
+    synchroniser();
+    if (lienSheet) chargerSheet(lienSheet, true).then(ok => { if (ok && ["parents", "modes", "normal"].includes(ecran)) afficher(); });
+  }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
-    if (partie) garderEcranAllume(); else synchroniser();
+    if (partie) garderEcranAllume(); else verifier();
   });
 
   afficher();
-  // Mise à jour automatique de la liste depuis le Google Sheet à l'ouverture
-  synchroniser();
-  if (lienSheet) chargerSheet(lienSheet, true).then(ok => { if (ok && (ecran === "parents" || ecran === "modes")) afficher(); });
+  verifier();
 })();
 </script>
 

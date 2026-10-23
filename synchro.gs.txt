@@ -67,6 +67,17 @@ function ajouter(nom, liste) {
   if (lignes.length) f.getRange(f.getLastRow() + 1, 1, lignes.length, colonnes.length).setValues(lignes);
 }
 
+function retirer(ids) {
+  if (!ids || !ids.length) return;
+  var aRetirer = {};
+  for (var i = 0; i < ids.length; i++) aRetirer[String(ids[i])] = true;
+  var f = feuille("Resultats");
+  var valeurs = f.getDataRange().getValues();
+  for (var l = valeurs.length - 1; l >= 1; l--) {
+    if (aRetirer[String(valeurs[l][0])]) f.deleteRow(l + 1);
+  }
+}
+
 function doPost(e) {
   var verrou = LockService.getScriptLock();
   verrou.waitLock(20000);
@@ -78,6 +89,7 @@ function doPost(e) {
     ajouter("Profils", d.profils);
     ajouter("Resultats", d.resultats);
     ajouter("Supprimes", sup);
+    retirer(d.retirer);
     return repondre(etat());
   } finally {
     verrou.releaseLock();
