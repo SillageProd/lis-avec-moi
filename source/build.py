@@ -25,6 +25,8 @@ html = f"""<!doctype html>
 </html>
 """
 (site / "index.html").write_text(html)
+numero = re.search(r'const VERSION = "([0-9.]+)"', src).group(1)
+(site / "version.json").write_text('{ "version": "' + numero + '" }\n')
 (site / "manifest.webmanifest").write_text("""{
   "name": "Lis avec moi",
   "short_name": "Lis avec moi",
@@ -50,7 +52,7 @@ self.addEventListener("fetch", e => {{
   const url = new URL(e.request.url);
   // seulement l'app elle-même et ses bibliothèques ; jamais Google (mots et synchronisation toujours en direct)
   const garder = url.origin === self.location.origin || ["cdnjs.cloudflare.com", "fonts.googleapis.com", "fonts.gstatic.com"].includes(url.hostname);
-  if (e.request.method !== "GET" || !garder) return;
+  if (e.request.method !== "GET" || !garder || url.pathname.endsWith("version.json")) return;
   // la page : d'abord le réseau (pour les mises à jour), sinon le cache
   if (e.request.mode === "navigate") {{
     e.respondWith(fetch(e.request).then(r => {{ const c = r.clone(); caches.open(CACHE).then(k => k.put("index.html", c)); return r; }}).catch(() => caches.match("index.html")));
@@ -73,4 +75,4 @@ def icone(taille):
     d.text((T/2, T/2), "Aa", font=f, fill="#243057", anchor="mm")
     return im.resize((taille, taille), Image.LANCZOS)
 for t in (180, 192, 512): icone(t).save(site / f"icone-{t}.png")
-print("ok", version)
+print("ok", version, "v" + numero)
