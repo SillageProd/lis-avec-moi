@@ -1,7 +1,7 @@
 # Construit le site à mettre en ligne (site/) à partir de index.html (la version de l'aperçu).
 # Deux éditions sortent du même code :
-#   site/     « Lis avec Nathan » (français, édition famille : Google Sheet réglable, synchronisation)
-#   site/nl/  « Lees met Nathan » (néerlandais, édition partage : liste fixe, sans synchronisation)
+#   site/     « Lis avec moi » (français, édition famille : Google Sheet réglable, synchronisation)
+#   site/nl/  « Lees met mij » (néerlandais, édition partage : liste fixe, sans synchronisation)
 import pathlib, re, time
 from PIL import Image, ImageDraw, ImageFont
 ici = pathlib.Path(__file__).parent
@@ -88,15 +88,15 @@ def icone(taille):
     return im.resize((taille, taille), Image.LANCZOS)
 
 # édition famille (FR) : le service worker laisse l'édition NL à son propre service worker
-construire(site, source, "Lis avec Nathan", "fr", "lis-avec-moi",
+construire(site, source, "Lis avec moi", "fr", "lis-avec-moi",
            exclure='\n  if (url.origin === self.location.origin && url.pathname.includes("/nl/")) return;')
 
 # édition partage (NL) : sans le Sheet de l'école ni le code de synchronisation
 nl = remplacer(source, 'const EDITION = "famille";', 'const EDITION = "partage";')
-nl = remplacer(nl, "<title>Lis avec Nathan</title>", "<title>Lees met Nathan</title>")
-nl = remplacer(nl, 'content="Lis avec Nathan"', 'content="Lees met Nathan"')
+nl = remplacer(nl, "<title>Lis avec moi</title>", "<title>Lees met mij</title>")
+nl = remplacer(nl, 'content="Lis avec moi"', 'content="Lees met mij"')
 nl = re.sub(r'const LIEN_SHEET_ECOLE = "[^"]*";', 'const LIEN_SHEET_ECOLE = "";', nl)
 nl = re.sub(r'const CODE_SYNCHRO = "(?:[^"\\]|\\.)*";', 'const CODE_SYNCHRO = "";', nl)
 assert "1EfFFQNCYZ1uqT7OIEDxHxz28Mjmj7JtSmtxUtvzAKz8" not in nl and "doPost" not in nl
-construire(site / "nl", nl, "Lees met Nathan", "nl-BE", "lees-met-mij")
+construire(site / "nl", nl, "Lees met mij", "nl-BE", "lees-met-mij")
 print("ok", version, "v" + numero)

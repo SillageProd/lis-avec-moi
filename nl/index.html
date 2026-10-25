@@ -9,9 +9,9 @@
 <link rel="apple-touch-icon" href="icone-180.png">
 <link rel="icon" href="icone-192.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>Lees met Nathan</title>
+<title>Lees met mij</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Lees met Nathan">
+<meta name="apple-mobile-web-app-title" content="Lees met mij">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Fredoka:wght@500;600;700&display=swap">
 <style>
@@ -344,7 +344,7 @@ textarea { min-height: 150px; resize: vertical; }
   const MOTS_EXEMPLE_NL = ["a", "e", "i", "o", "u", "m", "p", "k", "r", "s", "ik", "en", "op", "vis", "kam", "sok", "pen", "maan", "roos", "boom"];
   const MAX_PROFILS = 6;
   // Numéro de version (MAJEUR.MINEUR.CORRECTIF) : à augmenter à chaque mise en ligne
-  const VERSION = "1.7.5";
+  const VERSION = "1.7.6";
   let versionEnLigne = null;   // version publiée sur le site, lue dans version.json
   const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
   const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
@@ -749,7 +749,7 @@ textarea { min-height: 150px; resize: vertical; }
       </button>`).join("");
     const ajout = profils.length < MAX_PROFILS ? `<button class="tuile ajout" data-a="nouveauProfil"><span class="avatar">+</span><span class="nom">${L("Nouveau", "Nieuw")}</span></button>` : "";
     return `
-      <header class="titre-app">${L("Lis avec Nathan", "Lees met Nathan")}</header>
+      <header class="titre-app">${L("Lis avec moi", "Lees met mij")}</header>
       <div class="centre">
         <div class="entete"><h1>${L("Qui veut lire ?", "Wie wil er lezen?")}</h1><p>${profils.length ? L("Touche ton animal pour commencer", "Tik op je dier om te beginnen") : L("Crée ton profil pour commencer", "Maak je profiel om te beginnen")}</p></div>
         <div class="grille-profils">${tuiles}${ajout}</div>
@@ -1016,7 +1016,7 @@ textarea { min-height: 150px; resize: vertical; }
           : `
             <p class="aide">Pour retrouver les mêmes profils et progrès sur tous vos appareils (5 minutes, une seule fois, de préférence sur un ordinateur) :</p>
             <ol class="aide">
-              <li>Créez un nouveau Google Sheet, par exemple « Lis avec Nathan – résultats ».</li>
+              <li>Créez un nouveau Google Sheet, par exemple « Lis avec moi – résultats ».</li>
               <li>Menu <b>Extensions → Apps Script</b>. Effacez le contenu et collez le code ci-dessous.</li>
               <li><b>Déployer → Nouveau déploiement</b>, type <b>Application Web</b>. « Exécuter en tant que » : <b>Moi</b>, « Qui a accès » : <b>Tout le monde</b>. Cliquez sur Déployer et autorisez l'accès.</li>
               <li>Copiez l'<b>URL de l'application Web</b> (elle finit par /exec) et collez-la ici, sur chaque appareil.</li>

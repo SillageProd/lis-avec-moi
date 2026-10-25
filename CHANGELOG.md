@@ -1,7 +1,8 @@
-# Versions de « Lis avec Nathan »
+# Versions de « Lis avec moi »
 
 Numérotation MAJEUR.MINEUR.CORRECTIF : MINEUR pour une nouveauté, CORRECTIF pour une correction.
 
+- **1.7.6** — Retour aux noms d'origine « Lis avec moi » et « Lees met mij ».
 - **1.7.5** — Titre légèrement descendu.
 - **1.7.4** — Titre de l'app placé tout en haut de l'écran d'accueil.
 - **1.7.3** — Titre de l'app plus grand, en bleu foncé, sans icône.
