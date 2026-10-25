@@ -89,7 +89,8 @@ input[type="text"], input[type="url"], textarea {
 /* écran profils */
 .centre { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
 .entete { text-align: center; display: grid; gap: 6px; }
-.entete .titre-app { font-size: clamp(22px, 4vw, 32px); font-weight: 800; letter-spacing: .5px; color: #7176d6; }
+.entete .titre-app { font-size: clamp(38px, 8vw, 66px); font-weight: 800; letter-spacing: .5px; line-height: 1.1; color: #1f2f7a; }
+.entete .titre-app + h1 { font-size: clamp(24px, 4.5vw, 38px); }
 .entete p { color: var(--encre-douce); font-size: clamp(18px, 3vw, 24px); font-weight: 500; }
 .grille-profils { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; max-width: 900px; width: 100%; margin: 0 auto; }
 .tuile {
@@ -331,7 +332,7 @@ textarea { min-height: 150px; resize: vertical; }
   const MOTS_EXEMPLE_NL = ["a", "e", "i", "o", "u", "m", "p", "k", "r", "s", "ik", "en", "op", "vis", "kam", "sok", "pen", "maan", "roos", "boom"];
   const MAX_PROFILS = 6;
   // Numéro de version (MAJEUR.MINEUR.CORRECTIF) : à augmenter à chaque mise en ligne
-  const VERSION = "1.7.2";
+  const VERSION = "1.7.3";
   let versionEnLigne = null;   // version publiée sur le site, lue dans version.json
   const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
   const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
@@ -737,7 +738,7 @@ textarea { min-height: 150px; resize: vertical; }
     const ajout = profils.length < MAX_PROFILS ? `<button class="tuile ajout" data-a="nouveauProfil"><span class="avatar">+</span><span class="nom">${L("Nouveau", "Nieuw")}</span></button>` : "";
     return `
       <div class="centre">
-        <div class="entete"><div class="titre-app">📖 ${L("Lis avec Nathan", "Lees met Nathan")}</div><h1>${L("Qui veut lire ?", "Wie wil er lezen?")}</h1><p>${profils.length ? L("Touche ton animal pour commencer", "Tik op je dier om te beginnen") : L("Crée ton profil pour commencer", "Maak je profiel om te beginnen")}</p></div>
+        <div class="entete"><div class="titre-app">${L("Lis avec Nathan", "Lees met Nathan")}</div><h1>${L("Qui veut lire ?", "Wie wil er lezen?")}</h1><p>${profils.length ? L("Touche ton animal pour commencer", "Tik op je dier om te beginnen") : L("Crée ton profil pour commencer", "Maak je profiel om te beginnen")}</p></div>
         <div class="grille-profils">${tuiles}${ajout}</div>
       </div>
       <div class="bas"><button class="lien-parents" data-a="ouvrirPorte">🔒 ${L("Espace parents", "Voor ouders")}</button></div>
