@@ -1,4 +1,4 @@
-# Lis avec moi
+# Lis avec Nathan
 
 Petite app pour aider les enfants (4 à 8 ans) à lire les mots et les lettres vus à l'école.
 Adresse : https://sillageprod.github.io/lis-avec-moi/ (édition néerlandaise : https://sillageprod.github.io/lis-avec-moi/nl/).
@@ -15,7 +15,7 @@ Les mots viennent d'un Google Sheet partagé « Tous les utilisateurs disposant 
 un mot ou une lettre par ligne, dans la colonne A. L'app relit la liste à chaque ouverture.
 Le lien se change dans **Espace parents**.
 
-## Édition néerlandaise « Lees met mij »
+## Édition néerlandaise « Lees met Nathan »
 
 Une deuxième édition, entièrement en néerlandais, est en ligne à l'adresse `/nl/`, pour la partager avec d'autres parents.
 Elle est produite par `build.py` à partir du même code : chaque changement s'applique aux deux éditions.

@@ -9,9 +9,9 @@
 <link rel="apple-touch-icon" href="icone-180.png">
 <link rel="icon" href="icone-192.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>Lis avec moi</title>
+<title>Lis avec Nathan</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Lis avec moi">
+<meta name="apple-mobile-web-app-title" content="Lis avec Nathan">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Fredoka:wght@500;600;700&display=swap">
 <style>
@@ -342,7 +342,7 @@ textarea { min-height: 150px; resize: vertical; }
   const MOTS_EXEMPLE_NL = ["a", "e", "i", "o", "u", "m", "p", "k", "r", "s", "ik", "en", "op", "vis", "kam", "sok", "pen", "maan", "roos", "boom"];
   const MAX_PROFILS = 6;
   // Numéro de version (MAJEUR.MINEUR.CORRECTIF) : à augmenter à chaque mise en ligne
-  const VERSION = "1.7.0";
+  const VERSION = "1.7.1";
   let versionEnLigne = null;   // version publiée sur le site, lue dans version.json
   const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
   const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
@@ -853,7 +853,7 @@ textarea { min-height: 150px; resize: vertical; }
       if (plusRapide) { const t = tempsEnMots(prec.tempsMs - r.tempsMs); morceaux.push(L("plus rapide de " + t, t + " sneller")); }
       if (mieuxJuste || (!pireJuste && plusRapide)) { message = L("Tu as fait mieux que la dernière fois : ", "Beter dan de vorige keer: ") + morceaux.join(L(" et ", " en ")) + L(" !", "!"); classe = "mieux"; medaille = "🏆"; }
       else if (!pireJuste && !plusLent) message = L("Aussi bien que la dernière fois. Bien joué !", "Even goed als de vorige keer. Goed gedaan!");
-      else message = L(`La dernière fois : ${prec.justes} juste${prec.justes > 1 ? "s" : ""} sur ${prec.total} en ${tempsEnMots(prec.tempsMs)}. Continue, tu progresses !`, `De vorige keer: ${prec.justes} juist op ${prec.total} in ${tempsEnMots(prec.tempsMs)}. Doe zo verder, je wordt steeds beter!`);
+      else message = L(`La dernière fois : ${prec.justes} juste${prec.justes > 1 ? "s" : ""} sur ${prec.total} en ${tempsEnMots(prec.tempsMs)}. Continue, tu progresses !`, `De vorige keer: ${prec.justes} van de ${prec.total} juist in ${tempsEnMots(prec.tempsMs)}. Doe zo verder, je wordt steeds beter!`);
     }
     return `
       <div class="fin">
@@ -1000,7 +1000,7 @@ textarea { min-height: 150px; resize: vertical; }
 
         <section class="panneau">
           <h3>${L("Profils", "Profielen")} (${profils.length}/${MAX_PROFILS})</h3>
-          <p class="aide">${L("Supprimer un profil efface aussi tous ses résultats.", "Als u een profiel verwijdert, worden ook alle resultaten gewist.")}</p>
+          <p class="aide">${L("Supprimer un profil efface aussi tous ses résultats.", "Als u een profiel verwijdert, worden ook alle resultaten ervan gewist.")}</p>
           ${lignesProfils}
         </section>
 
@@ -1013,7 +1013,7 @@ textarea { min-height: 150px; resize: vertical; }
           : `
             <p class="aide">Pour retrouver les mêmes profils et progrès sur tous vos appareils (5 minutes, une seule fois, de préférence sur un ordinateur) :</p>
             <ol class="aide">
-              <li>Créez un nouveau Google Sheet, par exemple « Lis avec moi – résultats ».</li>
+              <li>Créez un nouveau Google Sheet, par exemple « Lis avec Nathan – résultats ».</li>
               <li>Menu <b>Extensions → Apps Script</b>. Effacez le contenu et collez le code ci-dessous.</li>
               <li><b>Déployer → Nouveau déploiement</b>, type <b>Application Web</b>. « Exécuter en tant que » : <b>Moi</b>, « Qui a accès » : <b>Tout le monde</b>. Cliquez sur Déployer et autorisez l'accès.</li>
               <li>Copiez l'<b>URL de l'application Web</b> (elle finit par /exec) et collez-la ici, sur chaque appareil.</li>
@@ -1131,7 +1131,7 @@ textarea { min-height: 150px; resize: vertical; }
     const valeur = p.mode === "timer" ? { valeur: r.justes, legende: r.justes > 1 ? L("mots justes", "juiste woorden") : L("mot juste", "juist woord") } : { valeur: pc, suffixe: " %", legende: L("de bonnes réponses", "juiste antwoorden") };
     let delta = "";
     if (precedent && mieux) {
-      if (p.mode === "timer") { const d = r.justes - precedent.justes; delta = "+" + d + L((d > 1 ? " mots" : " mot") + " par rapport à la dernière fois", (d > 1 ? " woorden" : " woord") + " meer dan de vorige keer"); }
+      if (p.mode === "timer") { const d = r.justes - precedent.justes; delta = L("+" + d + (d > 1 ? " mots" : " mot") + " par rapport à la dernière fois", d + (d > 1 ? " woorden" : " woord") + " meer dan de vorige keer"); }
       else if (pc > Math.round(taux(precedent) * 100)) delta = "+" + (pc - Math.round(taux(precedent) * 100)) + L(" % de bonnes réponses", " % juiste antwoorden");
       else delta = tempsEnMots(precedent.tempsMs - r.tempsMs) + L(" plus rapide !", " sneller!");
     }
