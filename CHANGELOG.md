@@ -2,6 +2,7 @@
 
 Numérotation MAJEUR.MINEUR.CORRECTIF : MINEUR pour une nouveauté, CORRECTIF pour une correction.
 
+- **1.7.4** — Titre de l'app placé tout en haut de l'écran d'accueil.
 - **1.7.3** — Titre de l'app plus grand, en bleu foncé, sans icône.
 - **1.7.2** — Nom de l'app affiché au-dessus de « Qui veut lire ? » (FR et NL).
 - **1.7.1** — L'app s'appelle « Lis avec Nathan » (« Lees met Nathan » en néerlandais) ; relecture du néerlandais.
