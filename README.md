@@ -34,3 +34,10 @@ Les profils et les résultats peuvent être partagés entre appareils grâce à 
 (`source/synchro.gs`, aussi disponible sur le site : `synchro.gs.txt`) installé dans un Google Sheet
 privé. Les étapes sont expliquées dans **Espace parents → Synchroniser l'iPad et l'iPhone**.
 Si le même prénom a été créé sur deux appareils, les deux profils sont regroupés automatiquement.
+
+## Compteur (pour Robin)
+
+L'app envoie, une seule fois par appareil, un signal anonyme (édition FR ou NL, installée ou non, type d'appareil)
+vers un Google Sheet privé, via le script `source/compteur.gs`. Rien n'est affiché dans l'app.
+Le script envoie un rapport par e-mail chaque lundi et le 1er de chaque mois.
+L'adresse du script se met dans la constante `COMPTEUR` de `source/apercu.html` (vide = pas de comptage).

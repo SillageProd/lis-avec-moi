@@ -332,7 +332,7 @@ textarea { min-height: 150px; resize: vertical; }
   const MOTS_EXEMPLE_NL = ["a", "e", "i", "o", "u", "m", "p", "k", "r", "s", "ik", "en", "op", "vis", "kam", "sok", "pen", "maan", "roos", "boom"];
   const MAX_PROFILS = 6;
   // Numéro de version (MAJEUR.MINEUR.CORRECTIF) : à augmenter à chaque mise en ligne
-  const VERSION = "1.7.6";
+  const VERSION = "1.8.0";
   let versionEnLigne = null;   // version publiée sur le site, lue dans version.json
   const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
   const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
@@ -1261,7 +1261,25 @@ textarea { min-height: 150px; resize: vertical; }
     if (partie) garderEcranAllume(); else verifier();
   });
 
+  // ---------- compteur discret ----------
+  // Une seule fois par appareil : un signal anonyme (édition, installée ou non, type d'appareil)
+  // vers le Google Sheet privé de Robin (script source/compteur.gs). Rien n'est affiché dans l'app.
+  const COMPTEUR = "";
+  function compter() {
+    const installee = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    const type = installee ? "installation" : "navigateur";
+    if (!COMPTEUR || !location.hostname.endsWith("github.io") || lire("compte_" + type, false)) return;
+    const ua = navigator.userAgent;
+    const appareil = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? "iPad"
+      : /iPhone|iPod/.test(ua) ? "iPhone" : /Android/.test(ua) ? "Android" : "Ordinateur";
+    let id = lire("compte_id", "");
+    if (!id) { id = Math.random().toString(36).slice(2, 10) + Date.now().toString(36); ecrire("compte_id", id); }
+    const q = new URLSearchParams({ edition: L("fr", "nl"), type, appareil, id });
+    fetch(COMPTEUR + "?" + q, { mode: "no-cors" }).then(() => ecrire("compte_" + type, true)).catch(() => {});
+  }
+
   afficher();
   verifier();
+  compter();
 })();
 </script>

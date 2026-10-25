@@ -2,6 +2,7 @@
 
 Numérotation MAJEUR.MINEUR.CORRECTIF : MINEUR pour une nouveauté, CORRECTIF pour une correction.
 
+- **1.8.0** — Compteur discret des appareils (FR et NL) vers un Google Sheet privé, avec rapport par e-mail chaque semaine et chaque mois. Rien n'est visible dans l'app.
 - **1.7.6** — Retour aux noms d'origine « Lis avec moi » et « Lees met mij ».
 - **1.7.5** — Titre légèrement descendu.
 - **1.7.4** — Titre de l'app placé tout en haut de l'écran d'accueil.
