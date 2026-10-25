@@ -2,6 +2,7 @@
 
 Numérotation MAJEUR.MINEUR.CORRECTIF : MINEUR pour une nouveauté, CORRECTIF pour une correction.
 
+- **1.7.2** — Nom de l'app affiché au-dessus de « Qui veut lire ? » (FR et NL).
 - **1.7.1** — L'app s'appelle « Lis avec Nathan » (« Lees met Nathan » en néerlandais) ; relecture du néerlandais.
 - **1.7.0** — Bouton New : les mots du dernier ajout (avec leur nombre), sinon les 15 derniers ; seule la date à côté de la version ; vérification Android.
 - **1.6.1** — Sous le copyright, la date de la dernière mise à jour des mots remplace « à jour ».

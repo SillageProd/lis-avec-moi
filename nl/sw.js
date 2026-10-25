@@ -1,5 +1,5 @@
 // Fonctionnement hors ligne : l'app est gardée en cache, le Google Sheet est toujours relu en ligne.
-const CACHE = "lees-met-mij-20261025052915";
+const CACHE = "lees-met-mij-20261025054644";
 const BASE = ["./", "index.html", "manifest.webmanifest", "icone-180.png", "icone-192.png", "icone-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(BASE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith("lees-met-mij-") && k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
