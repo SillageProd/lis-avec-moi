@@ -2,6 +2,7 @@
 
 Numérotation MAJEUR.MINEUR.CORRECTIF : MINEUR pour une nouveauté, CORRECTIF pour une correction.
 
+- **1.9.2** — Bouton New : les mots ajoutés le même jour s'additionnent même si l'app a relu le Sheet entre-temps, et un mot remis en bas de la liste compte comme nouveau.
 - **1.9.1** — Exercice « de of het » masqué dans la version NL (interrupteur DE_HET_NL dans le code pour le réactiver).
 - **1.9.0** — Nouvel exercice « de ou het ? » (feuille « de-het » du Google Sheet : colonne A = de, colonne B = het), avec résultats et progrès.
 - **1.8.0** — Compteur discret des appareils (FR et NL) vers un Google Sheet privé, avec rapport par e-mail chaque semaine et chaque mois. Rien n'est visible dans l'app.

@@ -336,7 +336,7 @@ textarea { min-height: 150px; resize: vertical; }
   const MOTS_EXEMPLE_NL = ["a", "e", "i", "o", "u", "m", "p", "k", "r", "s", "ik", "en", "op", "vis", "kam", "sok", "pen", "maan", "roos", "boom"];
   const MAX_PROFILS = 6;
   // Numéro de version (MAJEUR.MINEUR.CORRECTIF) : à augmenter à chaque mise en ligne
-  const VERSION = "1.9.1";
+  const VERSION = "1.9.2";
   let versionEnLigne = null;   // version publiée sur le site, lue dans version.json
   const ANIMAUX = ["🦁", "🐸", "🐼", "🦊", "🐰", "🐙", "🐢", "🦄", "🐶", "🐱", "🐵", "🐧", "🐨", "🐯", "🦖", "🐝"];
   const COULEURS = ["#f2545b", "#ff8a3d", "#ffb627", "#22b573", "#3aa8e0", "#7176d6", "#d465c2"];
@@ -355,7 +355,16 @@ textarea { min-height: 150px; resize: vertical; }
   let motsDate = lire("motsDate", source.maj || null);
   // Mots apparus lors du dernier ajout (bouton New) ; null tant qu'aucun ajout n'a été vu
   let motsNouveaux = lire("motsNouveaux", null);
-  const retenirNouveaux = ajoutes => { if (ajoutes.length) { motsNouveaux = ajoutes; ecrire("motsNouveaux", motsNouveaux); } };
+  // Les ajouts d'une même journée s'additionnent (l'app peut relire le Sheet pendant que les mots sont encore tapés)
+  const retenirNouveaux = ajoutes => {
+    if (!ajoutes.length) return;
+    const jour = new Date().toDateString();
+    const deja = Array.isArray(motsNouveaux) && lire("motsNouveauxJour", "") === jour ? motsNouveaux : [];
+    motsNouveaux = [...deja.filter(m => !ajoutes.includes(m)), ...ajoutes];
+    ecrire("motsNouveaux", motsNouveaux); ecrire("motsNouveauxJour", jour);
+  };
+  // Lignes ajoutées en bas de la liste brute (doublons compris : un mot déjà vu puis remis en bas compte comme nouveau)
+  const lignesBrutes = liste => { const l = liste.map(m => String(m == null ? "" : m).trim()).filter(Boolean); if (l.length && ["mot", "mots", "lettre", "lettres", "mots/lettres", "lettres/mots", "liste", "woord", "woorden", "letters"].includes(l[0].toLowerCase())) l.shift(); return l; };
   // Édition partage : liste du Sheet + mots ajoutés par les parents (gardés à part, jamais écrasés)
   let motsSheet = lire("motsSheet", null);
   let motsPerso = lire("motsPerso", []);
@@ -608,7 +617,12 @@ textarea { min-height: 150px; resize: vertical; }
     const propre = nettoyer(liste);
     if (!propre.length) return false;
     const avant = JSON.stringify(NL ? motsSheet : mots), ancien = new Set(NL ? motsSheet : mots);
-    if (source.type !== "exemple") retenirNouveaux(propre.filter(m => !ancien.has(m)));
+    const brut = lignesBrutes(liste), brutAvant = lire("motsBrut", null);
+    if (source.type !== "exemple") {
+      const finAjoutee = Array.isArray(brutAvant) && brut.length > brutAvant.length && brutAvant.every((m, i) => brut[i] === m);
+      retenirNouveaux(finAjoutee ? [...new Set(brut.slice(brutAvant.length))] : propre.filter(m => !ancien.has(m)));
+    }
+    ecrire("motsBrut", brut);
     if (JSON.stringify(propre) !== avant || !motsDate) { motsDate = new Date().toISOString(); ecrire("motsDate", motsDate); }
     if (NL) {
       motsSheet = propre; ecrire("motsSheet", motsSheet);
